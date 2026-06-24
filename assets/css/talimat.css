@@ -1,10 +1,9 @@
 :root{
-    --primary:#0f172a;
-    --accent:#2563eb;
-    --bg:#f4f7fb;
-    --card:#ffffff;
-    --border:#dbe3ec;
-    --text:#1f2937;
+    --primary:#16324F;
+    --secondary:#0B6E4F;
+    --border:#d6dbe1;
+    --text:#222;
+    --bg:#eef2f5;
 }
 
 *{
@@ -15,135 +14,153 @@
 
 body{
     background:var(--bg);
+    font-family:Calibri, Arial, sans-serif;
     color:var(--text);
-    font-family:"Segoe UI", Arial, sans-serif;
     line-height:1.7;
-}
-
-.container{
-    max-width:1100px;
-    margin:auto;
-    padding:25px;
-}
-
-.topbar{
-    background:var(--primary);
-    color:white;
-    padding:20px 25px;
-    border-radius:16px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:25px;
-    box-shadow:0 10px 30px rgba(0,0,0,.15);
-}
-
-.company{
-    font-size:24px;
-    font-weight:700;
-}
-
-.portal{
-    opacity:.8;
-    margin-top:4px;
-}
-
-.status{
-    background:#16a34a;
-    padding:10px 16px;
-    border-radius:999px;
-    font-weight:600;
-}
-
-.document-card{
-    background:var(--card);
-    border-radius:18px;
-    padding:35px;
-    box-shadow:0 10px 30px rgba(0,0,0,.08);
-    margin-bottom:30px;
-}
-
-.doc-code{
-    display:inline-block;
-    background:#dbeafe;
-    color:#1d4ed8;
-    padding:8px 16px;
-    border-radius:999px;
-    font-weight:700;
-    margin-bottom:15px;
-}
-
-.document-card h1{
-    font-size:32px;
-    color:var(--primary);
-    margin-bottom:25px;
-}
-
-.meta-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:15px;
-}
-
-.meta-box{
-    background:#f8fafc;
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:15px;
-}
-
-.meta-box span{
-    display:block;
-    color:#64748b;
-    font-size:13px;
-    margin-bottom:5px;
-}
-
-.meta-box strong{
-    font-size:18px;
-}
-
-section{
-    background:white;
-    border-radius:18px;
-    padding:25px;
-    margin-bottom:20px;
-    box-shadow:0 4px 12px rgba(0,0,0,.05);
-}
-
-section h2{
-    color:var(--primary);
-    margin-bottom:15px;
-    padding-bottom:10px;
-    border-bottom:2px solid #e5e7eb;
-}
-
-ol,
-ul{
-    padding-left:22px;
-}
-
-footer{
-    margin-top:40px;
-    text-align:center;
-    color:#64748b;
-    font-size:13px;
     padding:20px;
 }
 
+.container{
+    max-width:1000px;
+    margin:auto;
+    background:white;
+    border:1px solid #cfd6de;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
+}
+
+/* ÜST KISIM */
+
+.header{
+    display:grid;
+    grid-template-columns:140px 1fr;
+    border-bottom:3px solid var(--primary);
+}
+
+.logo{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-right:1px solid var(--border);
+    padding:15px;
+}
+
+.logo img{
+    max-width:100px;
+}
+
+.header-content{
+    padding:20px;
+}
+
+.company{
+    font-size:26px;
+    font-weight:700;
+    color:var(--primary);
+}
+
+.system{
+    color:#666;
+    margin-top:4px;
+}
+
+.doc-title{
+    margin-top:15px;
+    font-size:30px;
+    font-weight:700;
+}
+
+/* REVİZYON TABLOSU */
+
+.info-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.info-table td{
+    border:1px solid var(--border);
+    padding:12px;
+}
+
+.info-label{
+    background:#f5f7f9;
+    font-weight:600;
+    width:180px;
+}
+
+.status{
+    color:white;
+    background:var(--secondary);
+    text-align:center;
+    font-weight:bold;
+}
+
+/* İÇERİK */
+
+.content{
+    padding:35px;
+}
+
+.section{
+    margin-bottom:35px;
+}
+
+.section h2{
+    color:var(--primary);
+    font-size:20px;
+    border-left:5px solid var(--secondary);
+    padding-left:12px;
+    margin-bottom:15px;
+}
+
+.section p{
+    text-align:justify;
+}
+
+.section ul,
+.section ol{
+    margin-left:25px;
+}
+
+.section li{
+    margin-bottom:8px;
+}
+
+/* ALT */
+
+.footer{
+    border-top:1px solid var(--border);
+    padding:20px;
+    text-align:center;
+    color:#666;
+    font-size:13px;
+}
+
+/* MOBİL */
+
 @media(max-width:768px){
 
-    .topbar{
-        flex-direction:column;
-        gap:15px;
-        text-align:center;
-    }
-
-    .document-card h1{
-        font-size:24px;
+    body{
+        padding:0;
     }
 
     .container{
-        padding:12px;
+        border:none;
+    }
+
+    .header{
+        grid-template-columns:1fr;
+    }
+
+    .logo{
+        border-right:none;
+        border-bottom:1px solid var(--border);
+    }
+
+    .doc-title{
+        font-size:22px;
+    }
+
+    .content{
+        padding:20px;
     }
 }

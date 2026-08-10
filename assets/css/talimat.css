@@ -1,0 +1,425 @@
+/* =========================================================
+   ASUM YEMEK A.Ş. — EYS Talimat Şablonu Stil Dosyası
+   Marka renkleri: Kırmızı #D94F2B · Turuncu #E8622A · Antrasit #1E1E1E
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap');
+
+:root {
+    --primary: #D94F2B;
+    --secondary: #E8622A;
+    --dark: #1E1E1E;
+    --light: #F7F8FC;
+    --border: #E3E3E8;
+    --text-muted: #6b6b6b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #E9EAEE;
+    font-family: "Open Sans", sans-serif;
+    color: var(--dark);
+    -webkit-font-smoothing: antialiased;
+}
+
+.page {
+    max-width: 860px;
+    margin: 32px auto;
+    background: #ffffff;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* ---------- Üst başlık şeridi (koyu) ---------- */
+.header-top {
+    background: var(--dark);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-top .logo-svg {
+    height: 30px;
+    width: auto;
+}
+
+.header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.header-badge {
+    color: #ffffff;
+    font-family: "Poppins", sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 6px 14px;
+    border-radius: 20px;
+}
+
+.header-back-link {
+    color: rgba(255, 255, 255, 0.85);
+    font-family: "Open Sans", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.header-back-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Doküman kontrol şeridi ---------- */
+.doc-meta {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+}
+
+.meta-item {
+    flex: 1;
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-right: 1px solid var(--border);
+}
+
+.meta-item:last-child {
+    border-right: none;
+}
+
+.meta-item label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.meta-item span {
+    font-family: "Poppins", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* ---------- Başlık çubuğu ---------- */
+.doc-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 24px 32px;
+    border-bottom: 3px solid var(--primary);
+}
+
+.doc-code {
+    flex-shrink: 0;
+    background: var(--primary);
+    color: #ffffff;
+    font-family: "Poppins", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+.doc-title {
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1.35;
+    color: var(--dark);
+}
+
+/* ---------- İçerik ---------- */
+.content {
+    padding: 8px 32px 24px;
+}
+
+.section {
+    margin-top: 26px;
+}
+
+.section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.section-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #ffffff;
+    font-family: "Poppins", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.section-title {
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--dark);
+}
+
+.section-body p {
+    margin: 0 0 10px;
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: #333333;
+}
+
+/* ---------- Odoo Knowledge'dan gelen serbest biçimli içerik ---------- */
+.section-body-raw {
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: #333333;
+}
+
+.section-body-raw h1,
+.section-body-raw h2,
+.section-body-raw h3,
+.section-body-raw h4 {
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    color: var(--dark);
+    margin: 22px 0 10px;
+}
+
+.section-body-raw h1 { font-size: 19px; }
+.section-body-raw h2 { font-size: 16.5px; }
+.section-body-raw h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.03em; }
+.section-body-raw h4 { font-size: 14.5px; }
+
+.section-body-raw h1:first-child,
+.section-body-raw h2:first-child,
+.section-body-raw h3:first-child {
+    margin-top: 0;
+}
+
+.section-body-raw p {
+    margin: 0 0 12px;
+}
+
+.section-body-raw ul,
+.section-body-raw ol {
+    margin: 0 0 14px;
+    padding-left: 22px;
+}
+
+.section-body-raw li {
+    margin-bottom: 6px;
+}
+
+.section-body-raw strong {
+    color: var(--dark);
+}
+
+.section-body-raw a {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.section-body-raw table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 14px;
+}
+
+.section-body-raw table th,
+.section-body-raw table td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.section-body-raw table th {
+    background: var(--light);
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    font-size: 12.5px;
+    text-transform: uppercase;
+}
+
+.section-body-raw blockquote {
+    margin: 12px 0;
+    padding: 10px 16px;
+    border-left: 3px solid var(--secondary);
+    background: var(--light);
+    color: #444444;
+}
+
+.section-body-raw img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+/* ---------- Sorumluluk satırları ---------- */
+.resp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 14.5px;
+    border-bottom: 1px dashed var(--border);
+}
+
+.resp-row:last-child {
+    border-bottom: none;
+}
+
+.resp-label {
+    flex-shrink: 0;
+    width: 18px;
+    color: var(--primary);
+    font-weight: 700;
+    text-align: center;
+}
+
+/* ---------- Madde listesi ---------- */
+.bullet-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.bullet-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: #333333;
+}
+
+.bullet-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin-top: 7px;
+    border-radius: 50%;
+    background: var(--secondary);
+}
+
+/* ---------- İlgili doküman listesi ---------- */
+.doc-link-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.doc-link-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.doc-tag {
+    flex-shrink: 0;
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    background: var(--light);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    min-width: 68px;
+    text-align: center;
+}
+
+/* ---------- Alt bilgi ---------- */
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 32px;
+    background: var(--light);
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.footer-right {
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+    color: var(--dark);
+    white-space: nowrap;
+}
+
+.footer-page {
+    color: var(--primary);
+}
+
+/* ---------- Yazdırma ---------- */
+@media print {
+    body {
+        background: #ffffff;
+    }
+    .page {
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        max-width: 100%;
+    }
+    .header-top {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .doc-code, .section-num, .bullet-dot {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+@media (max-width: 600px) {
+    .doc-meta {
+        flex-direction: column;
+    }
+    .meta-item {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .doc-title-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

@@ -1,0 +1,2005 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sera Otomasyon Simülasyonu</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#e4e7ea; --card:#f6f7f8; --fg:#1f2933; --muted:#68737f; --line:#d3d8dd;
+    --sky:#eef0f2; --skyR:#dde1e5; --grid:rgba(100,116,139,.09);
+    --ground:#d5d3cf; --hatch:#b4b0a9; --curb:#c3c7cc;
+    --frame:#525c67; --glass:rgba(148,165,180,.08); --mull:#a7afb8; --hole:#3f4852;
+    --pane:#8d9aa8; --open:#1f6fd1; --openSoft:#dce8f8;
+    --equip:#e9ebee; --equipLine:#525c67; --equipDark:#737d88;
+    --plant:#93a895; --plant2:#7a9180; --pot:#aaa097;
+    --tag:#fbfbfc; --tagline:#c8ced4; --wire:#9ca7b3; --rain:#7f91a3;
+    --heat:#e2571c; --heatSoft:#fce6da; --fan:#0e9384; --fanSoft:#d6f1ed;
+    --tagtext:#5e6873; --alarm:#d32f2f; --warn:#c78a00; --ok:#2f8a4e;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:18px 16px 12px; max-width:1440px; margin:0 auto; }
+  header h1 { font-size:18px; margin:0; font-weight:600; }
+  header p { margin:0; color:var(--muted); font-size:13px; }
+  .badge { font:600 11px ui-monospace, Consolas, monospace; padding:3px 8px; border-radius:4px; border:1px solid var(--line); color:var(--muted); margin-left:auto; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; padding:0 16px 20px; max-width:1440px; margin:0 auto; }
+  @media (max-width: 920px) { main { grid-template-columns:1fr; } .badge { margin-left:0; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+  .stage { padding:10px; display:flex; flex-direction:column; gap:10px; }
+  .stage svg { width:100%; height:auto; display:block; border-radius:4px; border:1px solid var(--line); }
+  .status { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; }
+  @media (max-width: 700px) { .status { grid-template-columns:repeat(3, minmax(0,1fr)); } }
+  .st { display:flex; align-items:center; gap:9px; padding:7px 10px; border:1px solid var(--line); border-radius:6px; border-left-width:3px; transition:background .3s, border-color .3s; }
+  .st i { width:7px; height:7px; border-radius:1px; background:var(--equipDark); flex:none; opacity:.5; }
+  .st small { display:block; font-size:11px; color:var(--muted); line-height:1.25; }
+  .st b { font:600 12.5px ui-monospace, Consolas, monospace; }
+  .st.on i { opacity:1; }
+  .st.on { color:#fff; border-color:transparent; box-shadow:0 2px 6px rgba(0,0,0,.15); }
+  .st.on small { color:rgba(255,255,255,.85); } .st.on i { background:#fff; animation:blink 1.2s steps(1) infinite; }
+  .st.heat.on { background:var(--heat); } .st.warnc.on { background:var(--warn); } .st.fan.on { background:var(--fan); } .st.blue.on { background:var(--open); }
+  @keyframes blink { 50% { opacity:.25; } }
+  @keyframes pulse { 0%,100% { opacity:.9; } 50% { opacity:.25; } }
+  .side { padding:16px; display:flex; flex-direction:column; gap:14px; align-self:start; }
+  .side h2 { font-size:11px; margin:0; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; }
+  .hint { margin:4px 0 0; font-size:12px; color:var(--muted); }
+  .row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 10px; }
+  .row label { font-size:13px; }
+  .row output { font:12px ui-monospace, Consolas, monospace; color:var(--muted); }
+  .row input[type=range] { grid-column:1 / -1; width:100%; accent-color:var(--frame); }
+  .sw { display:flex; justify-content:space-between; align-items:center; font-size:13px; cursor:pointer; }
+  .sw input { appearance:none; width:32px; height:18px; border-radius:3px; background:var(--line); position:relative; cursor:pointer; transition:background .2s; margin:0; }
+  .sw input::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:2px; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.25); transition:transform .2s; }
+  .sw input:checked { background:var(--frame); } .sw input:checked::after { transform:translateX(14px); }
+  .sw input:focus-visible { outline:2px solid var(--open); outline-offset:2px; }
+  hr { border:0; border-top:1px solid var(--line); margin:0; }
+
+  /* ---- SVG ---- */
+  .sky { fill:var(--sky); transition:fill 1s; } svg.raining .sky { fill:var(--skyR); }
+  .gridl { fill:none; stroke:var(--grid); stroke-width:.6; }
+  .hatch { stroke:var(--hatch); stroke-width:1; }
+  .frame { fill:none; stroke:var(--frame); stroke-width:4; stroke-linejoin:round; stroke-linecap:square; }
+  .mullion { stroke:var(--mull); stroke-width:1.2; }
+  .hole { stroke:var(--hole); stroke-width:6; opacity:.85; }
+  .pane { stroke:var(--pane); stroke-width:5; stroke-linecap:butt; transition:stroke .4s; }
+  .active .pane { stroke:var(--open); stroke-width:7; filter:url(#fGlow); }
+  .mot { transition:fill .3s, stroke .3s; } .mot.on { fill:var(--open); stroke:var(--open); animation:pulse 1s infinite; }
+  .halo { fill:none; stroke-width:2.5; opacity:0; } .on > .halo, .halo.on { animation:pulse 1.4s ease-in-out infinite; }
+  .eq { fill:var(--equip); stroke:var(--equipLine); stroke-width:1.3; }
+  .eqline { fill:none; stroke:var(--equipLine); stroke-width:1.3; }
+  .pole { stroke:var(--equipLine); stroke-width:2.5; }
+  .etag { fill:var(--tagtext); font:600 9px ui-monospace, Consolas, monospace; letter-spacing:.03em; }
+  .tag rect.bg { fill:var(--tag); stroke:var(--tagline); stroke-width:1; }
+  .tag text { fill:var(--fg); }
+  .tag text.k { fill:var(--muted); font:600 9px ui-monospace, Consolas, monospace; letter-spacing:.04em; }
+  .tag text.v { font:600 12px ui-monospace, Consolas, monospace; }
+  .wire { fill:none; stroke:var(--wire); stroke-width:1.2; stroke-dasharray:4 3; }
+  .rain line { stroke:var(--rain); stroke-width:1.2; stroke-linecap:round; opacity:.7; }
+  .wind line { stroke:var(--wire); stroke-width:1.2; stroke-linecap:round; stroke-dasharray:10 4 2 4; }
+  .chip rect { fill:var(--tag); stroke:var(--tagline); transition:fill .4s, stroke .4s; }
+  .chip text { fill:var(--muted); font:600 9.5px ui-monospace, Consolas, monospace; letter-spacing:.04em; transition:fill .4s; }
+  .chip .ind { fill:var(--equipDark); opacity:.5; transition:fill .4s, opacity .4s; }
+  .chip.on rect { stroke:transparent; } .chip.on text { fill:#fff; } .chip.on .ind { fill:#fff; opacity:1; }
+  #chipHeat.on rect { fill:var(--heat); } #chipFan.on rect { fill:var(--fan); } #chipWin.on rect, #chipVent.on rect { fill:var(--open); }
+  .chip.on .ind { animation:blink 1.2s steps(1) infinite; }
+  .pipe { fill:var(--equip); stroke:var(--equipLine); stroke-width:1.3; transition:fill .6s; }
+  .pipeline { fill:none; stroke:var(--equipLine); stroke-width:4; stroke-linecap:round; }
+  .pipecore { fill:none; stroke:var(--equip); stroke-width:2; stroke-linecap:round; transition:stroke .6s; }
+  svg .heating .pipe { fill:var(--heat); stroke:#9a3510; filter:url(#fGlow); }
+  .pipeHalo { fill:var(--heat); opacity:0; } .heating .pipeHalo { animation:pulse 1.4s ease-in-out infinite; }
+  svg .heating .pipecore { stroke:var(--heat); }
+  svg .heating .valve { fill:var(--heat); }
+  .valve { fill:var(--equip); stroke:var(--equipLine); stroke-width:1.3; transition:fill .6s; }
+  .rise { fill:none; stroke:var(--heat); stroke-width:2; stroke-linecap:round; stroke-dasharray:3 3; }
+  #fanBlades path { fill:var(--equipDark); transition:fill .4s; }
+  .fanOn #fanBlades path { fill:var(--fan); }
+  .fanOn .fanBox { stroke:var(--fan); stroke-width:2.5; }
+  .flow { fill:none; stroke:var(--fan); stroke-width:2.4; stroke-linecap:round; stroke-dasharray:8 5; }
+
+  /* ---- Aşama 2: parametre paneli, simülasyon çubuğu, tablolar ---- */
+  .tabs { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .tabs button, .seg button, .btn { font:600 12px "Segoe UI", system-ui, sans-serif; color:var(--fg); background:var(--card); border:0; padding:7px 4px; cursor:pointer; }
+  .tabs button + button, .seg button + button { border-left:1px solid var(--line); }
+  .tabs button.on, .seg button.on { background:var(--frame); color:#fff; }
+  .tab { display:none; flex-direction:column; gap:12px; } .tab.on { display:flex; }
+  .side h4 { margin:6px 0 -4px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  .prm { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; }
+  .prm span { display:flex; align-items:center; gap:6px; flex:none; }
+  .prm input, .prm select { font:13px ui-monospace, Consolas, monospace; width:76px; padding:4px 6px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--fg); text-align:right; }
+  .prm select { width:130px; font-family:"Segoe UI", system-ui, sans-serif; text-align:left; }
+  .prm em { font-style:normal; font-size:11px; color:var(--muted); width:52px; }
+  .btn { border:1px solid var(--line); border-radius:4px; padding:6px 12px; }
+  .btn:hover, .tabs button:hover:not(.on), .seg button:hover:not(.on) { background:var(--bg); }
+  .simbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 10px; border:1px solid var(--line); border-radius:6px; }
+  .simbar .clock small { display:block; font-size:11px; color:var(--muted); line-height:1.2; }
+  .simbar .clock b { font:600 16px ui-monospace, Consolas, monospace; }
+  .seg { display:flex; border:1px solid var(--line); border-radius:4px; overflow:hidden; }
+  .seg button { padding:6px 10px; font-family:ui-monospace, Consolas, monospace; font-size:11.5px; }
+  .simbar .btn { margin-left:auto; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:10px; }
+  @media (max-width: 1100px) { .grid2 { grid-template-columns:1fr; } }
+  .panel { border:1px solid var(--line); border-radius:6px; padding:10px 12px; overflow-x:auto; }
+  .panel h3 { margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; }
+  .panel .hint { margin:-2px 0 6px; }
+  .tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .tbl th { text-align:left; font-weight:600; font-size:11px; color:var(--muted); padding:4px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .tbl td { padding:5px 6px; border-bottom:1px solid var(--line); font-family:ui-monospace, Consolas, monospace; white-space:nowrap; }
+  .tbl td:first-child { font-family:"Segoe UI", system-ui, sans-serif; }
+  .tbl tr:last-child td { border-bottom:0; }
+  .tbl .up { color:var(--heat); font-weight:600; } .tbl .dn { color:var(--open); font-weight:600; } .tbl .mut { color:var(--muted); }
+  .pill { display:inline-block; font:700 10.5px ui-monospace, Consolas, monospace; padding:2px 8px; border-radius:3px; color:#fff; background:var(--equipDark); letter-spacing:.04em; }
+  .pill.ok { background:#2f8a4e; } .pill.lo { background:var(--open); } .pill.hi { background:var(--heat); }
+  /* ---- Aşama 3: otomatik kontrol ---- */
+  .tabs { grid-template-columns:repeat(3,1fr); }
+  .tabs button:nth-child(n+4) { border-top:1px solid var(--line); }
+  .tabs button:nth-child(4) { border-left:0; }
+  .sub { display:flex; flex-direction:column; gap:10px; } .sub[hidden], .hint[hidden] { display:none; }
+  .disabled { opacity:.45; pointer-events:none; }
+  .alarms { display:flex; flex-wrap:wrap; gap:6px; }
+  .alarms[hidden] { display:none; }
+  .al { display:inline-flex; gap:8px; align-items:center; font-size:12.5px; padding:5px 10px; border-radius:4px; border:1px solid; }
+  .al b { font:700 10.5px ui-monospace, Consolas, monospace; letter-spacing:.05em; padding:1px 6px; border-radius:2px; color:#fff; }
+  .al.crit { border-color:var(--alarm); background:#fdecec; } .al.crit b { background:var(--alarm); }
+  .al.warn { border-color:var(--warn); background:#fff6e0; } .al.warn b { background:var(--warn); }
+  .al.info { border-color:var(--line); background:var(--card); } .al.info b { background:var(--equipDark); }
+  .pill.crit { background:var(--alarm); } .pill.warn { background:var(--warn); } .pill.man { background:var(--open); } .pill.na { background:var(--equipDark); }
+  .tbl .crit { color:var(--alarm); font-weight:700; }
+  .tbl .pill.crit { color:#fff; } .tbl td:nth-child(4) { white-space:normal; } .tbl td .pill + .pill { margin-left:4px; }
+  .tbl small.use { display:block; font-size:10.5px; color:var(--open); font-weight:600; line-height:1.2; }
+  .panel h3 .mut { text-transform:none; letter-spacing:0; font-weight:500; color:var(--muted); }
+  .panel h3 .btn.tiny { float:right; padding:1px 8px; font-size:11px; text-transform:none; letter-spacing:0; }
+  .dec td.why { white-space:normal; font-family:"Segoe UI", system-ui, sans-serif; font-size:12px; color:var(--muted); min-width:220px; }
+  .dec b.act-heat { color:var(--heat); } .dec b.act-fan { color:var(--fan); } .dec b.act-vent, .dec b.act-win { color:var(--open); }
+  .outs { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:8px; font-size:11.5px; }
+  .out { font:700 10px ui-monospace, Consolas, monospace; padding:3px 7px; border-radius:2px; border:1px solid var(--line); color:var(--muted); letter-spacing:.04em; }
+  .out.on { color:#fff; border-color:transparent; }
+  .out.on.vent, .out.on.win { background:var(--open); } .out.on.fan { background:var(--fan); } .out.on.heat { background:var(--heat); } .out.on.alarm { background:var(--alarm); }
+  .trendHead { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .legend { display:inline-flex; gap:6px 12px; align-items:center; flex-wrap:wrap; text-transform:none; letter-spacing:0; font-weight:500; color:var(--fg); font-size:12px; }
+  .legend i, .tip i { display:inline-block; width:16px; height:0; vertical-align:middle; margin-right:4px; }
+  .lg-in { border-top:2px solid var(--frame); } .lg-out { border-top:2px dashed var(--muted); }
+  i.lg-band { height:9px; background:rgba(47,138,78,.16); border:1px solid rgba(47,138,78,.35); }
+  .seg.small { margin-left:auto; } .seg.small button { padding:3px 8px; text-transform:none; letter-spacing:0; }
+  .charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width: 1100px) { .charts { grid-template-columns:1fr; } }
+  .ctitle { font-size:11.5px; color:var(--muted); margin:4px 0 2px; }
+  .chsvg { width:100%; height:170px; display:block; cursor:crosshair; }
+  .chsvg.lanes { height:72px; }
+  .chsvg .gl { stroke:var(--line); stroke-width:1; }
+  .chsvg .ax { fill:var(--muted); font:10px ui-monospace, Consolas, monospace; }
+  .chsvg .dl { fill:var(--fg); font:600 10.5px ui-monospace, Consolas, monospace; }
+  .chsvg .band { fill:rgba(47,138,78,.12); stroke:rgba(47,138,78,.3); stroke-width:1; }
+  .chsvg .ln-in { fill:none; stroke:var(--frame); stroke-width:2; stroke-linejoin:round; }
+  .chsvg .ln-out { fill:none; stroke:var(--muted); stroke-width:1.5; stroke-dasharray:5 3; }
+  .chsvg .xh { stroke:var(--fg); stroke-width:1; opacity:.4; }
+  .chsvg .dot-in { fill:var(--frame); stroke:var(--card); stroke-width:2; } .chsvg .dot-out { fill:var(--muted); stroke:var(--card); stroke-width:2; }
+  .chsvg .laneBg { fill:var(--bg); }
+  .panel { position:relative; }
+  .tip { position:absolute; z-index:5; pointer-events:none; background:var(--card); border:1px solid var(--line); border-radius:6px; box-shadow:0 4px 14px rgba(0,0,0,.12); padding:8px 10px; font-size:12px; min-width:200px; }
+  .tip div { display:grid; grid-template-columns:20px 1fr auto; gap:6px; align-items:center; } .tip em { font-style:normal; } .tip div span { font-family:ui-monospace, Consolas, monospace; font-weight:600; }
+  .tip div i { flex:none; } .tip div.mut { color:var(--muted); font-size:11px; margin-top:4px; display:block; }
+  .log { list-style:none; margin:0; padding:0; max-height:236px; overflow:auto; font-size:12px; }
+  .log li { display:grid; grid-template-columns:76px 1fr; gap:8px; padding:4px 2px 4px 8px; border-bottom:1px solid var(--line); border-left:3px solid transparent; }
+  .log time { font:11px ui-monospace, Consolas, monospace; color:var(--muted); padding-top:1px; }
+  .log li.on { border-left-color:var(--ok); } .log li.off { border-left-color:var(--equipDark); }
+  .log li.warn { border-left-color:var(--warn); } .log li.crit { border-left-color:var(--alarm); background:#fdf3f3; } .log li.info { border-left-color:var(--line); }
+  .sens { border:1px solid var(--line); border-radius:6px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .sens .sh { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .sens .sh b { font-size:13px; display:block; } .sens .sh small { font:10.5px ui-monospace, Consolas, monospace; color:var(--muted); }
+  .sens select, .prm select.src { font:12.5px "Segoe UI", system-ui, sans-serif; padding:4px 6px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--fg); }
+  .prm select.src { width:150px; }
+  .sens .sm { display:flex; gap:10px; justify-content:flex-end; } .sens .sm[hidden] { display:none; }
+  .sens .sm span { display:flex; align-items:center; gap:4px; }
+  .sens .sm input { width:64px; font:13px ui-monospace, Consolas, monospace; padding:3px 6px; border:1px solid var(--line); border-radius:4px; text-align:right; }
+  .sens .sm em { font-style:normal; font-size:11px; color:var(--muted); }
+  .sfault .tag rect.bg { stroke:var(--alarm); stroke-width:1.6; } .sfault .tag text.v { fill:var(--alarm); }
+  .sman .tag rect.bg { stroke:var(--open); stroke-width:1.4; stroke-dasharray:4 2; }
+  .simbar .seg button { min-width:34px; }
+  .side > h2 { margin-top:2px; }
+  .sens .row { gap:2px 10px; }
+  .rules tr.on td { background:var(--bg); }
+  .rules td:first-child { white-space:nowrap; }
+  .rdot { display:inline-block; width:8px; height:8px; border-radius:2px; background:var(--line); margin-right:8px; vertical-align:middle; }
+  .rdot.heat, .pill.r-heat { background:var(--heat); } .rdot.vent, .pill.r-vent { background:var(--open); }
+  .rdot.fan, .pill.r-fan { background:var(--fan); } .rdot.alarm, .pill.r-alarm { background:var(--warn); }
+  .grid2 { grid-template-columns:1fr 1fr; }
+
+  
+  /* =========================================================
+     DÜZEN (tek ekran, sayfa kaydırması yok)
+     ========================================================= */
+  html, body { height:100%; }
+  body { height:100vh; height:100dvh; overflow:hidden; display:flex; flex-direction:column; }
+  main.app, main.app :not(svg):not(svg *) { border-radius:0 !important; }
+  main.app { flex:1; min-height:0; display:grid; gap:8px; padding:10px; max-width:none; margin:0;
+    grid-template-columns:minmax(0,1fr) 340px; grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"viz rules" "ctl rules"; }
+  .viz { grid-area:viz; min-height:0; display:flex; flex-direction:column; gap:6px; padding:6px; }
+  .svgwrap { flex:1; min-height:0; display:flex; }
+  .svgwrap svg { width:100%; height:100%; display:block; border:1px solid var(--line); }
+  .mtabs { display:none; grid-area:tabs; }
+  .dock { min-height:0; padding:8px 10px; }
+  .p-ctl { grid-area:ctl; } .p-rules { grid-area:rules; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* Durum kartları + kararlar */
+  .status { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; flex:none; }
+  .st { padding:4px 8px; gap:7px; align-items:flex-start; border-left-width:3px; min-width:0; }
+  .st i { margin-top:5px; }
+  .st > div { min-width:0; }
+  .st small { font-size:10.5px; } .st b { font-size:12.5px; display:block; }
+  .st .rs { display:block; font-size:10.5px; line-height:1.3; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .st.on .rs { color:rgba(255,255,255,.88); }
+
+  /* Sensör şeridi */
+  .p-ctl { display:grid; grid-template-columns:1.15fr repeat(5, minmax(0,1fr)); gap:6px; }
+  .p-ctl .g-in, .p-ctl .g-out, #sensIn, #sensOut { display:contents; }
+  .blk, .sens { border:1px solid var(--line); padding:4px 8px; display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .blk > b, .sens > b { font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sl { display:grid; grid-template-columns:26px minmax(0,1fr) 44px; align-items:center; gap:5px; font-size:11px; min-height:21px; }
+  .sl input { width:100%; margin:0; accent-color:var(--frame); min-width:0; }
+  .sl output { white-space:nowrap; font:10.5px ui-monospace, Consolas, monospace; text-align:right; color:var(--fg); }
+  .nf { display:grid; grid-template-columns:minmax(0,1fr) 54px 18px; align-items:center; gap:4px; font-size:11px; min-height:21px; }
+  .nf input, .blk select { width:100%; min-width:0; font:11.5px ui-monospace, Consolas, monospace; padding:1px 4px; border:1px solid var(--line); background:#fff; color:var(--fg); }
+  .nf input { text-align:right; } .nf em { font-style:normal; color:var(--muted); font-size:10.5px; }
+  .blk select { font-family:"Segoe UI", system-ui, sans-serif; margin-top:2px; }
+  .blk .sw { font-size:11px; min-height:21px; }
+  .blk .sw input { width:28px; height:16px; } .blk .sw input::after { width:12px; height:12px; } .blk .sw input:checked::after { transform:translateX(12px); }
+
+  /* Kurallar */
+  .p-rules h3 { margin:0; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .p-rules h3 #ruleHint { flex-basis:100%; order:5; text-transform:none; letter-spacing:0; font-weight:500; }
+  .cv { margin:4px 0 6px; font:11px ui-monospace, Consolas, monospace; color:var(--fg); background:var(--bg); padding:4px 6px; }
+  .rreset { margin-left:auto; font:600 10.5px "Segoe UI", system-ui, sans-serif; text-transform:none; letter-spacing:0; color:var(--fg); background:var(--card); border:1px solid var(--line); padding:1px 8px; cursor:pointer; }
+  .rgrp { display:none; border:1px solid var(--line); }
+  .rgrp button { font:600 10.5px "Segoe UI", system-ui, sans-serif; text-transform:none; letter-spacing:0; border:0; background:var(--card); color:var(--fg); padding:1px 8px; cursor:pointer; }
+  .rgrp button + button { border-left:1px solid var(--line); } .rgrp button.on { background:var(--frame); color:#fff; }
+  .rules { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; min-height:0; overflow:hidden; }
+  .rules li { display:grid; grid-template-columns:14px 8px minmax(0,1fr) auto; gap:6px; align-items:center; padding:2px 6px; font-size:12px; min-height:26px; cursor:help; }
+  .rules li input { cursor:auto; }
+  .rules li .ron { width:14px; height:14px; margin:0; accent-color:var(--frame); cursor:pointer; }
+  .rules li i { width:8px; height:8px; background:var(--line); }
+  .rules li .rn { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rules li .rp { display:flex; align-items:center; justify-content:flex-end; gap:3px; white-space:nowrap; }
+  .rules li .rp em { font-style:normal; font:10.5px ui-monospace, Consolas, monospace; color:var(--muted); }
+  .rules li .rp em.sg { min-width:10px; text-align:center; color:var(--fg); font-weight:700; }
+  .rules li .rp em.un { width:26px; }
+  .rules li .rp input { width:52px; font:11.5px ui-monospace, Consolas, monospace; padding:1px 4px; border:1px solid var(--line); background:#fff; color:var(--fg); text-align:right; }
+  .rules li.on { font-weight:600; }
+  .rules li.off { opacity:.45; }
+  .rules li.on.heat { background:var(--heatSoft); } .rules li.on.heat i { background:var(--heat); }
+  .rules li.on.vent { background:var(--openSoft); } .rules li.on.vent i { background:var(--open); }
+  .rules li.on.fan, .rules li.on.circ { background:var(--fanSoft); } .rules li.on.fan i, .rules li.on.circ i { background:var(--fan); }
+  .rules li.on.dis { background:#efe9f7; } .rules li.on.dis i { background:#6b4fa0; }
+  .rules li.on.alarm { background:#fff4d6; } .rules li.on.alarm i { background:var(--warn); }
+
+  /* Sirkülasyon fanı */
+  #circRot path { fill:var(--equipDark); transition:fill .4s; } #circFan.on #circRot path { fill:var(--fan); }
+  #chipCirc.on rect { fill:var(--fan); }
+
+  /* Orta genişlik: sensör şeridi 3 sütun */
+  @media (max-width: 1240px) {
+    main.app { grid-template-columns:minmax(0,1fr) 300px; }
+    .p-ctl { grid-template-columns:repeat(3, minmax(0,1fr)); }
+    .status { grid-template-columns:repeat(4, minmax(0,1fr)); }
+    .rules li { min-height:24px; }
+  }
+
+  /* Telefon / dar ekran: çizim üstte, sekmeli panel altta */
+  @media (max-width: 820px) {
+    main.app { padding:6px; gap:6px; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr); grid-template-areas:"viz" "tabs" "pane"; }
+    .svgwrap { flex:none; } .svgwrap svg { height:auto; max-height:30dvh; }
+  }
+  /* Telefon yatay */
+  @media (max-height: 560px) and (min-width: 600px) {
+    main.app { padding:6px; gap:6px; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); grid-template-areas:"viz tabs" "viz pane"; }
+  }
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px) {
+    .viz { padding:4px; gap:4px; }
+    .status { grid-template-columns:repeat(4, minmax(0,1fr)); gap:4px; }
+    .st { padding:2px 6px; } .st small { font-size:10px; } .st b { font-size:11px; } .st .rs { font-size:9.5px; }
+    .mtabs { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--line); background:var(--card); }
+    .mtabs button { font:600 11.5px "Segoe UI", system-ui, sans-serif; padding:7px 2px; border:0; background:transparent; color:var(--fg); cursor:pointer; }
+    .mtabs button + button { border-left:1px solid var(--line); } .mtabs button.on { background:var(--frame); color:#fff; }
+    main.app > .dock { grid-area:pane; overflow-y:auto; }
+    main.app > .dock:not(.on) { display:none; }
+    .p-ctl { display:block; }
+    .p-ctl .grp { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .p-ctl[data-g="in"] .g-set, .p-ctl[data-g="in"] .g-out, .p-ctl[data-g="out"] .g-in { display:none; }
+    .p-ctl .g-set { margin-bottom:6px; }
+    .p-ctl .g-set .blk { grid-column:1 / -1; }
+    .rgrp { display:inline-flex; }
+    .rules[data-show="a"] li[data-g="b"], .rules[data-show="a"] li[data-g="c"], .rules[data-show="b"] li[data-g="a"], .rules[data-show="b"] li[data-g="c"], .rules[data-show="c"] li[data-g="a"], .rules[data-show="c"] li[data-g="b"] { display:none; }
+    .sl, .nf, .blk .sw { min-height:24px; }
+  }
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px) {
+    .p-ctl #sensIn { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .p-ctl[data-g="out"] #sensIn { display:none; }
+  }
+
+  @media (max-width: 820px) and (max-height: 700px) { .svgwrap svg { max-height:24dvh; } .sl, .nf, .blk .sw { min-height:21px; } .rules li { min-height:24px; } }
+  @media (max-height: 560px) and (min-width: 600px) { .st .rs { display:none; } .sl, .nf, .blk .sw { min-height:20px; } .rules li { min-height:22px; padding:1px 6px; } }
+  @media (max-width: 1240px) and (min-width: 821px) {
+    main.app { grid-template-columns:minmax(0,1fr) 320px; }
+    .rules li { gap:4px; padding:2px 4px; }
+    .rules li .rp input { width:44px; } .rules li .rp em.un { width:22px; }
+  }
+  @media (max-width: 820px) and (min-height: 760px) { .svgwrap svg { max-height:38dvh; } }
+  /* ---- Sağ sütun sekmeleri ve RTS ---- */
+  .rtabs { display:grid; grid-template-columns:1fr 1fr 1fr; border:1px solid var(--line); margin-bottom:8px; flex:none; }
+  .rtabs button { font:600 11.5px "Segoe UI", system-ui, sans-serif; padding:6px 4px; border:0; background:var(--card); color:var(--fg); cursor:pointer; }
+  .rtabs button + button { border-left:1px solid var(--line); } .rtabs button.on { background:var(--frame); color:#fff; }
+  .rtab { display:flex; flex-direction:column; min-height:0; flex:1; gap:6px; }
+  .p-rules:not([data-t="sim"]) .t-sim, .p-rules:not([data-t="rules"]) .t-rules, .p-rules:not([data-t="eng"]) .t-eng { display:none; }
+  .t-rules { gap:0; }
+  .rtsw { font-size:12px; padding:5px 8px; border:1px solid var(--line); background:var(--bg); }
+  .rtsw b { font-family:ui-monospace, Consolas, monospace; }
+  .nf.wide { grid-template-columns:56px minmax(0,1fr); }
+  .nf.wide select { width:100%; min-width:0; font:12px "Segoe UI", system-ui, sans-serif; padding:2px 4px; border:1px solid var(--line); background:#fff; color:var(--fg); }
+  .rtsrow { display:flex; gap:6px; align-items:center; }
+  .seg.sm { flex:1; display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--line); }
+  .seg.sm button { font:600 11px ui-monospace, Consolas, monospace; padding:4px 0; border:0; background:var(--card); color:var(--fg); cursor:pointer; min-width:0; }
+  .seg.sm button + button { border-left:1px solid var(--line); } .seg.sm button.on { background:var(--frame); color:#fff; }
+  .btn.sm { font:600 11px "Segoe UI", system-ui, sans-serif; padding:4px 8px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; white-space:nowrap; }
+  .btn.sm:hover { background:var(--bg); }
+  .rtsclock { display:flex; align-items:baseline; gap:8px; }
+  .rtsclock b { font:600 16px ui-monospace, Consolas, monospace; } .rtsclock span { font-size:11.5px; color:var(--muted); }
+  .prog { height:4px; background:var(--line); } .prog i { display:block; height:100%; width:0; background:var(--frame); }
+  details.acc { border:1px solid var(--line); }
+  details.acc summary { font:600 11px "Segoe UI", system-ui, sans-serif; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding:5px 8px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; }
+  details.acc summary::-webkit-details-marker { display:none; }
+  details.acc summary::after { content:"+"; font-weight:700; } details.acc[open] summary::after { content:"−"; }
+  details.acc[open] summary { border-bottom:1px solid var(--line); color:var(--fg); }
+  details.acc > .pg, details.acc > .geo, details.acc > .btn { margin:6px 8px; }
+  .pg { display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; }
+  .pg label { display:flex; flex-direction:column; gap:1px; font-size:10.5px; color:var(--muted); min-width:0; }
+  .pg label.full { grid-column:1 / -1; }
+  .pg label span { display:flex; align-items:center; gap:4px; }
+  .pg input, .pg select { width:100%; min-width:0; font:12px ui-monospace, Consolas, monospace; padding:2px 5px; border:1px solid var(--line); background:#fff; color:var(--fg); }
+  .pg input { text-align:right; } .pg select { font-family:"Segoe UI", system-ui, sans-serif; }
+  .pg em { font-style:normal; font-size:10px; color:var(--muted); flex:none; min-width:24px; }
+  .geo { font:10.5px ui-monospace, Consolas, monospace; color:var(--fg); background:var(--bg); padding:4px 6px; margin:0; }
+  .res { display:grid; grid-template-columns:1fr auto 1fr auto; gap:3px 8px; font-size:11px; border-top:1px solid var(--line); padding-top:6px; margin-top:auto; }
+  .res span { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .res b { font:600 11px ui-monospace, Consolas, monospace; text-align:right; white-space:nowrap; }
+  .res:empty::before { content:"Simülasyon açıldığında enerji ve hava akışı değerleri burada görünür."; grid-column:1 / -1; color:var(--muted); }
+  .svgwrap { position:relative; }
+  .rtsbadge { position:absolute; left:8px; top:8px; font:600 11px ui-monospace, Consolas, monospace; background:var(--frame); color:#fff; padding:3px 8px; display:flex; align-items:center; gap:6px; pointer-events:none; }
+  .rtsbadge[hidden] { display:none; }
+  .rtsbadge i { width:7px; height:7px; background:#9aa5b1; } .rtsbadge i.live { background:#4ade80; animation:blink 1s steps(1) infinite; }
+  body.rts .p-ctl .g-in .sl input, body.rts .p-ctl .g-out .sl input, body.rts #pRain { opacity:.55; }
+  @media (max-width: 1240px) { .res { grid-template-columns:1fr auto; } }
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px) {
+    .rtabs { display:none; }
+    .mtabs { grid-template-columns:repeat(5,1fr) !important; }
+    .mtabs button { font-size:11px !important; padding:7px 1px !important; }
+    .res { grid-template-columns:1fr auto 1fr auto; }
+  }
+  /* Dar/alçak ekranda simülasyon sekmesi: açık parametre bölümü kendi içinde kayar, sayfa kaymaz */
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px), (max-height: 900px) and (max-width: 1100px) {
+    main.app > .dock.p-rules { overflow:hidden; display:flex; flex-direction:column; }
+    .t-sim { overflow:hidden; gap:5px; }
+    .t-sim details.acc[open] { flex:1; min-height:0; overflow-y:auto; }
+    .t-sim details.acc[open] summary { position:sticky; top:0; background:var(--card); z-index:1; }
+    .t-sim:has(details[open]) .res { display:none; }
+  }
+  /* ---- Hesaplar sekmesi ---- */
+  .engtop { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .engtop label { display:flex; flex-direction:column; gap:1px; font-size:10.5px; color:var(--muted); }
+  .engtop label span { display:flex; align-items:center; gap:4px; }
+  .engtop input { width:100%; min-width:0; font:12px ui-monospace, Consolas, monospace; padding:2px 5px; border:1px solid var(--line); background:#fff; color:var(--fg); text-align:right; }
+  .engtop em { font-style:normal; font-size:10px; flex:none; }
+  .eng { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:2px; }
+  .ec { border:1px solid var(--line); border-left:3px solid var(--frame); padding:4px 7px; display:flex; flex-direction:column; gap:1px; }
+  .eh { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+  .eh b { font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ev { font:700 12px ui-monospace, Consolas, monospace; white-space:nowrap; }
+  .ev.ok { color:#2f8a4e; } .ev.bad { color:var(--alarm); }
+  .ec code { font:11px ui-monospace, Consolas, monospace; color:var(--fg); background:var(--bg); padding:2px 5px; line-height:1.5; }
+  .ec code sub, .ec code sup, .engnote sub { font-size:8.5px; }
+  .ec small { font:10.5px ui-monospace, Consolas, monospace; color:var(--muted); line-height:1.35; }
+  .engnote { margin:2px 0 0; font-size:10px; color:var(--muted); line-height:1.35; flex:none; }
+  .t-eng { gap:6px; }
+  @media (max-height: 420px) and (min-width: 600px) { .t-sim { overflow-y:auto !important; } }
+  /* ---- Kurallar: Gir / Çık sütunları ---- */
+  .rules li { grid-template-columns:14px 8px minmax(0,1fr) 46px 46px 50px; gap:4px; }
+  .rules li.rh { font:600 10px "Segoe UI", system-ui, sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; min-height:16px; cursor:default; border-bottom:1px solid var(--line); }
+  .rules li.rh span:nth-child(n+4) { text-align:center; }
+  .rules li > input[data-f] { width:100%; min-width:0; font:11.5px ui-monospace, Consolas, monospace; padding:1px 3px; border:1px solid var(--line); background:#fff; color:var(--fg); text-align:right; }
+  .rules li .rn small { font:10px ui-monospace, Consolas, monospace; color:var(--muted); font-weight:400; }
+  .rules li .rnote { grid-column:span 2; font-style:normal; font:10.5px ui-monospace, Consolas, monospace; color:var(--muted); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rules li .pc { display:flex; align-items:center; gap:2px; } .rules li .pc input { width:100%; min-width:0; font:11.5px ui-monospace, Consolas, monospace; padding:1px 3px; border:1px solid var(--line); background:#fff; text-align:right; }
+  .rules li .pc em { font-style:normal; font-size:10px; color:var(--muted); }
+  @media (max-width: 1240px) and (min-width: 821px) { .rules li { grid-template-columns:14px 8px minmax(0,1fr) 42px 42px 46px; } }
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px) { .rules li.rh { display:grid !important; } }
+
+  /* ---- Simülasyon: mevsim/hava, olaylar, günlük ---- */
+  .pg3 { display:grid; grid-template-columns:1fr 1.2fr .8fr; gap:6px; }
+  .pg3 label { display:flex; flex-direction:column; gap:1px; font-size:10.5px; color:var(--muted); min-width:0; }
+  .pg3 select { width:100%; min-width:0; font:12px "Segoe UI", system-ui, sans-serif; padding:2px 3px; border:1px solid var(--line); background:#fff; color:var(--fg); }
+  .evgrid { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin:6px 8px; }
+  .evb { display:flex; justify-content:space-between; align-items:center; gap:4px; font:600 11px "Segoe UI", system-ui, sans-serif; padding:4px 6px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; text-align:left; min-width:0; }
+  .evb span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .evb em { font:10px ui-monospace, Consolas, monospace; color:var(--muted); font-style:normal; flex:none; }
+  .evb:hover:not(:disabled) { background:var(--bg); } .evb:disabled { opacity:.5; cursor:not-allowed; }
+  .evb.on { background:#6b4fa0; border-color:#6b4fa0; color:#fff; } .evb.on em { color:rgba(255,255,255,.85); }
+  .evopt { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin:0 8px 6px; } .evopt .sw { font-size:11px; }
+  .elog { list-style:none; margin:0; padding:4px 8px; max-height:220px; overflow-y:auto; font-size:11px; }
+  .elog li { display:grid; grid-template-columns:62px 1fr; gap:6px; padding:2px 0 2px 6px; border-bottom:1px solid var(--line); border-left:3px solid transparent; }
+  .elog time { font:10.5px ui-monospace, Consolas, monospace; color:var(--muted); }
+  .elog li.on { border-left-color:#2f8a4e; } .elog li.off { border-left-color:var(--equipDark); } .elog li.evt { border-left-color:#6b4fa0; background:#f5f1fa; } .elog li.info { border-left-color:var(--line); }
+  .rtsbadge b { font-weight:600; background:#6b4fa0; padding:0 6px; margin-left:4px; }
+
+  /* ---- Hesaplar ---- */
+  .t-eng .geo b { font-family:"Segoe UI", system-ui, sans-serif; }
+  .eng h4 { margin:4px 0 2px; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; }
+  .eng h4 small { text-transform:none; letter-spacing:0; font-weight:400; }
+  .etbl { width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed; }
+  .etbl th { text-align:left; font-weight:600; font-size:10px; color:var(--muted); padding:2px 3px; border-bottom:1px solid var(--line); }
+  .etbl td { padding:3px; border-bottom:1px solid var(--line); font:11px ui-monospace, Consolas, monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .etbl td:first-child { font-family:"Segoe UI", system-ui, sans-serif; } .etbl th:first-child { width:31%; }
+  .etbl td small { font-size:9.5px; color:var(--muted); } .etbl td.up { color:var(--heat); } .etbl td.dn { color:var(--open); }
+  .esum { margin:0; padding:0 0 0 14px; display:flex; flex-direction:column; gap:3px; font-size:11.5px; line-height:1.4; }
+  .esum b { font-weight:600; }
+  details.ef .eflist { display:flex; flex-direction:column; gap:3px; margin:6px; }
+  .ec b { font-size:11px; }
+  .evb.on:hover:not(:disabled) { background:#5a3f8c; }
+  .etbl th:first-child { width:30%; } .etbl th:nth-child(2), .etbl th:nth-child(3) { width:16%; }
+  .rules li { grid-template-columns:14px 8px minmax(0,1fr) 46px 46px 46px; }
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px) {
+    .t-sim { overflow-y:auto !important; }
+    .rules { overflow-y:auto; }
+  }
+  @media (max-height: 560px) and (min-width: 600px) { .rules li { min-height:20px; } .rules li.rh { min-height:14px; } }
+  .evhint { margin:6px 8px 0; font-size:11px; color:var(--muted); } .evhint[hidden] { display:none; }
+  /* ---- İbreli göstergeler ---- */
+  .gauges { display:grid; grid-template-columns:1fr 1fr; gap:2px 6px; margin:1px 0 2px; }
+  .gz { position:relative; display:flex; justify-content:center; min-width:0; }
+  .gz small { position:absolute; right:0; top:0; font:9px ui-monospace, Consolas, monospace; color:var(--muted); }
+  .gauge { width:100%; max-width:92px; height:auto; display:block; }
+  .gauge .gtr { fill:none; stroke:var(--line); stroke-width:5; }
+  .gauge .gbd { fill:none; stroke:rgba(47,138,78,.55); stroke-width:5; }
+  .gauge .gbd.warn { stroke:rgba(211,47,47,.45); }
+  .gauge .gtk { stroke:var(--muted); stroke-width:.7; }
+  .gauge .gnd { transform-box:view-box; transform-origin:35px 38px; transition:transform .45s cubic-bezier(.3,1.4,.6,1); }
+  .gauge .gnd line { stroke:var(--fg); stroke-width:1.8; stroke-linecap:round; }
+  .gauge .ghub { fill:var(--fg); }
+  .gauge text { font-family:ui-monospace, Consolas, monospace; }
+  .gauge .gmin, .gauge .gmax { font-size:6px; fill:var(--muted); } .gauge .gmin { text-anchor:start; } .gauge .gmax { text-anchor:end; }
+  .gauge .gval { font-size:9.5px; font-weight:700; fill:var(--fg); text-anchor:middle; }
+  .gauge.lo .gval { fill:var(--open); } .gauge.hi .gval { fill:var(--heat); }
+  .gauge.lo .gnd line { stroke:var(--open); } .gauge.hi .gnd line { stroke:var(--heat); }
+  .sw2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sw2 .sw { font-size:11px; min-height:21px; }
+  .sw2 .sw input { width:28px; height:16px; } .sw2 .sw input::after { width:12px; height:12px; } .sw2 .sw input:checked::after { transform:translateX(12px); }
+  @media (prefers-reduced-motion: reduce) { .gauge .gnd { transition:none; } }
+  @media (max-width: 820px) and (max-height: 700px) { .gauge { max-width:74px; } .gauges { margin:0; } }
+  @media (max-width: 820px), (max-height: 560px) and (min-width: 600px) { main.app > .dock.p-rules:not(.on), main.app > .dock.p-ctl:not(.on) { display:none; } }
+  .gauge { max-width:100px; }
+  /* ---- Alarmlar ---- */
+  .rules li.rsep { margin-top:4px; color:var(--alarm); }
+  .rules li.on.crit { background:#fdecec; } .rules li.on.crit i { background:var(--alarm); animation:blink 1s steps(1) infinite; }
+  .rgrp button[data-g="c"] { color:var(--alarm); } .rgrp button[data-g="c"].on { background:var(--alarm); color:#fff; }
+  .almbox { position:absolute; right:8px; top:8px; z-index:2; max-width:min(320px, 60%); background:#fff; border:2px solid var(--alarm); font-size:11.5px; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  .almbox[hidden] { display:none; }
+  .almbox .ah { display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--alarm); color:#fff; padding:3px 6px; font:700 11px ui-monospace, Consolas, monospace; letter-spacing:.05em; }
+  .almbox .ah button { font:700 10.5px "Segoe UI", system-ui, sans-serif; background:#fff; color:var(--alarm); border:0; padding:1px 8px; cursor:pointer; }
+  .almbox .ah span { font-weight:500; font-size:10px; opacity:.9; }
+  .almbox .ai { padding:3px 7px; border-top:1px solid #f3c7c7; color:#8f1d1d; font-weight:600; }
+  .almbox .ai.ack { font-weight:500; color:#b04545; }
+  .almbox.blink .ah { animation:almhead 1s steps(1) infinite; }
+  @keyframes almhead { 50% { background:#7f1414; } }
+  @keyframes almglow { 0% { filter:drop-shadow(0 0 2px #d32f2f) drop-shadow(0 0 5px #d32f2f); } 50% { filter:none; } }
+  svg .alm { animation:almglow 1s steps(1) infinite; }
+  svg .alm.ack { animation:none; filter:drop-shadow(0 0 2px #d32f2f); }
+  svg .alm .tag rect.bg { stroke:var(--alarm); stroke-width:2; } svg .alm .tag text.v { fill:var(--alarm); }
+  .blinkfill { animation:blink .8s steps(1) infinite; }
+  .elog li.alm { border-left-color:var(--alarm); background:#fdecec; color:#8f1d1d; font-weight:600; }
+  .rules li { min-height:23px; }
+  .rules { overflow-y:auto; }
+  @media (max-width: 820px) { .almbox { font-size:10px; max-width:70%; } }
+  @media (min-width: 821px) and (min-height: 561px) {
+    .rules { gap:1px; } .rules li { min-height:21px; padding:1px 4px; }
+    .rules li > input[data-f], .rules li .pc input { padding:0 3px; height:19px; }
+    .rules li.rh { min-height:15px; } .rules li.rsep { margin-top:2px; }
+    .p-rules .cv { margin:3px 0 4px; padding:3px 6px; }
+  }
+  .almbox .ah [hidden] { display:none; }
+  /* ---- Gelecek tahmini ---- */
+  .fchead { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .fseg { display:inline-flex; border:1px solid var(--line); }
+  .fseg button { font:600 10.5px ui-monospace, Consolas, monospace; border:0; background:var(--card); color:var(--fg); padding:2px 8px; cursor:pointer; }
+  .fseg button + button { border-left:1px solid var(--line); } .fseg button.on { background:var(--frame); color:#fff; }
+  .fcnote { margin:0; font-size:10.5px; color:var(--muted); }
+  #fcCharts { display:flex; flex-direction:column; gap:2px; cursor:crosshair; }
+  .fchart { width:100%; height:auto; display:block; }
+  .fchart .fband { fill:rgba(47,138,78,.13); }
+  .fchart .fline { fill:none; stroke:var(--frame); stroke-width:1.8; stroke-linejoin:round; }
+  .fchart .fout { fill:none; stroke-width:2.4; stroke-linejoin:round; } .fchart .fout.hi { stroke:var(--heat); } .fchart .fout.lo { stroke:var(--open); }
+  .fchart .fax { font:8px ui-monospace, Consolas, monospace; fill:var(--muted); }
+  .fchart .fttl { font:600 8.5px "Segoe UI", system-ui, sans-serif; fill:var(--muted); }
+  .fchart .fcur { stroke:var(--fg); stroke-width:1; opacity:.45; } .fchart .fdot { fill:var(--frame); stroke:#fff; stroke-width:1.5; }
+  .fchart .flane { fill:var(--bg); }
+  .fcread { margin:0; font:10.5px ui-monospace, Consolas, monospace; color:var(--fg); background:var(--bg); padding:3px 6px; min-height:1.4em; }
+  .esum b.crit { color:var(--alarm); }
+  .eng > * { flex-shrink:0; }
+  .fcread { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pg3 { grid-template-columns:1fr 1fr !important; }
+  .p-rules h3 .rreset { padding:1px 6px; }
+  .p-rules h3 #ruleExport { margin-left:auto; } .p-rules h3 #ruleReset { margin-left:0; }
+  .toast { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); background:var(--frame); color:#fff; font:600 12px "Segoe UI", system-ui, sans-serif; padding:6px 14px; z-index:3; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .toast.bad { background:var(--alarm); } .toast[hidden] { display:none; }
+  .t-sim { overflow-y:auto; }
+  .evgrid { gap:3px; } .evb { padding:3px 6px; }
+  @media (max-height: 760px) and (min-width: 821px) { .t-sim { gap:4px; } .rtsclock b { font-size:14px; } .evopt { margin-bottom:4px; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="viz card">
+    <div class="svgwrap">
+      <div class="rtsbadge" id="rtsBadge" hidden></div>
+      <div class="almbox" id="alarmBox" hidden></div>
+      <div class="toast" id="toast" hidden></div>
+<svg id="sera" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sera kesit şeması">
+      <defs>
+        <filter id="fGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="1000" height="600"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <pattern id="pGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path class="gridl" d="M20 0 H0 V20"/></pattern>
+        <pattern id="pHatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="hatch" x1="0" y1="0" x2="0" y2="7"/></pattern>
+        <linearGradient id="gWarm" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stop-color="#e2571c" stop-opacity=".30"/><stop offset=".6" stop-color="#e2571c" stop-opacity=".08"/><stop offset="1" stop-color="#c2622b" stop-opacity="0"/>
+        </linearGradient>
+        <marker id="mArrow" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="var(--equipLine)"/></marker>
+        <mask id="mOutside" maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="600">
+          <rect width="1000" height="600" fill="#fff"/><polygon points="220,520 220,310 490,180 760,310 760,520" fill="#000"/>
+        </mask>
+      </defs>
+
+      <!-- ===== Zemin / çevre ===== -->
+      <rect class="sky" width="1000" height="520"/>
+      <rect width="1000" height="520" fill="url(#pGrid)"/>
+      <g mask="url(#mOutside)"><g id="wind" class="wind"></g><g id="rain" class="rain"></g></g>
+      <rect y="520" width="1000" height="80" style="fill:var(--ground)"/>
+      <rect y="520" width="1000" height="80" fill="url(#pHatch)"/>
+      <line x1="0" y1="520" x2="1000" y2="520" style="stroke:var(--equipLine);stroke-width:1.5"/>
+
+      <!-- ===== Sera ===== -->
+      <rect x="212" y="506" width="556" height="14" style="fill:var(--curb);stroke:var(--equipLine);stroke-width:1"/>
+      <polygon points="220,506 220,310 490,180 760,310 760,506" style="fill:var(--glass)"/>
+      <polygon id="warmAir" points="220,506 220,310 490,180 760,310 760,506" fill="url(#gWarm)" opacity="0"/>
+      <g>
+        <line class="mullion" x1="355" y1="506" x2="355" y2="245"/><line class="mullion" x1="625" y1="506" x2="625" y2="245"/>
+        <line class="mullion" x1="220" y1="310" x2="760" y2="310"/>
+        <line class="mullion" x1="355" y1="245" x2="625" y2="245" opacity=".6"/>
+        <line class="mullion" x1="355" y1="310" x2="490" y2="245" opacity=".6"/><line class="mullion" x1="625" y1="310" x2="490" y2="245" opacity=".6"/>
+      </g>
+      <line class="hole" x1="220" y1="340" x2="220" y2="410"/>
+      <line class="hole" x1="760" y1="340" x2="760" y2="410"/>
+      <line class="hole" x1="490" y1="180" x2="598" y2="232"/>
+      <path class="frame" d="M220 410 V506 M220 340 V310 L490 180 M598 232 L760 310 V340 M760 410 V506"/>
+
+      <!-- Pencereler / tavan -->
+      <g id="winL"><line class="pane" x1="220" y1="340" x2="220" y2="410"/></g>
+      <g id="winR"><line class="pane" x1="760" y1="340" x2="760" y2="410"/></g>
+      <g id="vent"><line class="pane" x1="490" y1="180" x2="598" y2="232"/></g>
+      <g>
+        <rect class="eq mot" id="motL" x="226" y="329" width="13" height="9"/><text class="etag" x="243" y="337">M-01</text>
+        <rect class="eq mot" id="motR" x="741" y="329" width="13" height="9"/><text class="etag" x="709" y="337">M-02</text>
+        <rect class="eq mot" id="motV" x="508" y="199" width="13" height="9"/><text class="etag" x="527" y="220">M-03</text>
+      </g>
+
+      <!-- Tezgahlar -->
+      <g>
+        <rect class="eq" x="398" y="469" width="154" height="5"/>
+        <line class="pole" style="stroke-width:2" x1="408" y1="474" x2="408" y2="506"/><line class="pole" style="stroke-width:2" x1="542" y1="474" x2="542" y2="506"/>
+        <rect class="eq" x="568" y="469" width="144" height="5"/>
+        <line class="pole" style="stroke-width:2" x1="578" y1="474" x2="578" y2="506"/><line class="pole" style="stroke-width:2" x1="702" y1="474" x2="702" y2="506"/>
+      </g>
+      <g id="plants"></g>
+
+      <!-- Isıtma sistemi: sıcak sulu boru hattı + motorlu vana -->
+      <g id="heating">
+        <g id="rise" opacity="0"></g>
+        <path class="pipeline" d="M232 548 V490 H248"/><path class="pipecore" d="M232 548 V490 H248"/>
+        <path class="pipeline" d="M266 490 H280 V496"/><path class="pipecore" d="M266 490 H280 V496"/>
+        <path class="pipeline" d="M242 548 V500"/><path class="pipecore" d="M242 548 V500"/>
+        <path class="valve" d="M248 483 L266 497 V483 L248 497 Z"/>
+        <line class="eqline" x1="257" y1="490" x2="257" y2="474"/>
+        <rect class="eq" x="250" y="464" width="14" height="10"/>
+        <text x="257" y="472" text-anchor="middle" style="font:700 7px ui-monospace,monospace;fill:var(--equipLine)">M</text>
+        <text class="etag" x="270" y="472">HV-01</text>
+        <g id="pipes"></g>
+        <text class="etag" x="250" y="562">SICAK SU GİDİŞ / DÖNÜŞ</text>
+        <path d="M246 566 H236" class="eqline" marker-end="url(#mArrow)" style="stroke-width:1"/>
+      </g>
+      <g id="chipHeat" class="chip" transform="translate(300 428)">
+        <rect width="106" height="17" rx="2"/><rect class="ind" x="7" y="5.5" width="6" height="6"/><text x="19" y="12.3">ISITMA · KAPALI</text>
+      </g>
+
+      <!-- Egzoz fanı -->
+      <g id="fan">
+        <rect class="halo" x="719" y="416" width="82" height="78" rx="4" style="stroke:var(--fan)"/>
+        <rect class="eq fanBox" x="726" y="423" width="68" height="64"/>
+        <circle cx="760" cy="455" r="26" style="fill:var(--sky);stroke:var(--equipLine);stroke-width:1.3"/>
+        <g id="fanBlades">
+          <path d="M760 455 C 753 442, 756 433, 765 431 C 769 440, 767 449, 760 455 Z"/>
+          <path d="M760 455 C 753 442, 756 433, 765 431 C 769 440, 767 449, 760 455 Z" transform="rotate(120 760 455)"/>
+          <path d="M760 455 C 753 442, 756 433, 765 431 C 769 440, 767 449, 760 455 Z" transform="rotate(240 760 455)"/>
+        </g>
+        <circle cx="760" cy="455" r="4" class="eq"/>
+        <g class="eqline" style="stroke-width:.8;opacity:.6"><line x1="734" y1="455" x2="786" y2="455"/><line x1="760" y1="429" x2="760" y2="481"/></g>
+        <text class="etag" x="727" y="418">EF-01</text>
+        <g id="fanFlow" opacity="0">
+          <path class="flow" d="M802 442 H850"/><path class="flow" d="M802 455 H860"/><path class="flow" d="M802 468 H850"/>
+        </g>
+      </g>
+      <g id="chipWin" class="chip" transform="translate(84 340)">
+        <rect width="116" height="17" rx="2"/><rect class="ind" x="7" y="5.5" width="6" height="6"/><text x="19" y="12.3">PENCERE · KAPALI</text>
+      </g>
+      <g id="chipVent" class="chip" transform="translate(606 136)">
+        <rect width="98" height="17" rx="2"/><rect class="ind" x="7" y="5.5" width="6" height="6"/><text x="19" y="12.3">TAVAN · KAPALI</text>
+      </g>
+      <g id="chipFan" class="chip" transform="translate(788 494)">
+        <rect width="86" height="17" rx="2"/><rect class="ind" x="7" y="5.5" width="6" height="6"/><text x="19" y="12.3">FAN · KAPALI</text>
+      </g>
+
+      <!-- Bağlantı hatları (sinyal) -->
+      <g id="wires" class="wire">
+        <path d="M96 400 H50 V318"/>
+        <path d="M194 425 H232 V378 H251"/>
+        <path d="M194 415 H240 V322 H490 V303"/>
+        <path d="M490 322 H690 V362"/>
+        <path d="M690 322 H747 V329"/>
+        <path d="M240 322 H232 V329"/>
+        <path d="M514 322 V208"/>
+        <path d="M194 452 H228 V469 H250"/>
+        <path d="M194 462 H222 V513 H716 V487"/>
+        <path d="M160 476 V538 H880 V520"/>
+      </g>
+
+      <!-- İç sensörler -->
+      <g id="sensors"></g>
+
+      <!-- Kontrol ünitesi -->
+      <g id="ctrl">
+        <line class="pole" x1="114" y1="476" x2="114" y2="520"/><line class="pole" x1="176" y1="476" x2="176" y2="520"/>
+        <rect class="eq" x="96" y="372" width="98" height="104"/>
+        <rect x="104" y="381" width="82" height="30" style="fill:var(--card);stroke:var(--equipLine);stroke-width:1"/>
+        <text id="plcLine1" x="110" y="394" style="font:600 8.5px ui-monospace,monospace;fill:var(--fg)">PLC-01  RUN</text>
+        <text id="plcMode" x="110" y="405" style="font:600 8.5px ui-monospace,monospace;fill:var(--muted)">MOD: AUTO</text>
+        <g style="font:600 7px ui-monospace,monospace;fill:var(--muted)">
+          <rect x="106" y="421" width="6" height="6" fill="#4d9a6a"/><text x="116" y="427">PWR</text>
+          <rect x="144" y="421" width="6" height="6" fill="#4d9a6a"/><text x="154" y="427">RUN</text>
+          <rect x="106" y="434" width="6" height="6" fill="var(--equipDark)" opacity=".45"/><text x="116" y="440">NET</text>
+          <rect id="ledErr" x="144" y="434" width="6" height="6" fill="var(--equipDark)" opacity=".45"/><text x="154" y="440">ERR</text>
+        </g>
+        <line class="eqline" x1="104" y1="450" x2="186" y2="450" style="opacity:.4"/>
+        <text x="145" y="466" text-anchor="middle" class="etag">KONTROL ÜNİTESİ</text>
+      </g>
+
+      <!-- Yağmur sensörü -->
+      <g id="rainSensor">
+        <line class="pole" x1="50" y1="316" x2="50" y2="520"/>
+        <g transform="rotate(-14 50 306)">
+          <rect id="rainPlate" x="30" y="301" width="40" height="9" class="eq"/>
+          <path d="M34 304 H66 M34 307 H66" class="eqline" style="stroke-width:.8;stroke-dasharray:3 2"/>
+        </g>
+        <text class="etag" x="58" y="335">RS-01</text>
+        <g class="tag" transform="translate(6 240)">
+          <rect class="bg" width="100" height="40" rx="2"/>
+          <text x="8" y="15" class="k">YAĞMUR</text><text x="8" y="31" class="v" id="rainV">--</text>
+        </g>
+      </g>
+
+      <!-- Rüzgar sensörü -->
+      <g id="windSensor">
+        <line class="pole" x1="880" y1="252" x2="880" y2="520"/>
+        <g id="anemo">
+          <g class="eqline" style="stroke-width:1.8">
+            <line x1="880" y1="245" x2="904" y2="245"/><line x1="880" y1="245" x2="868" y2="224.2"/><line x1="880" y1="245" x2="868" y2="265.8"/>
+          </g>
+          <circle cx="904" cy="245" r="6" class="eq"/><circle cx="868" cy="224.2" r="6" class="eq"/><circle cx="868" cy="265.8" r="6" class="eq"/>
+        </g>
+        <circle cx="880" cy="245" r="4" class="eq"/>
+        <text class="etag" x="888" y="290">WS-01</text>
+        <g class="tag" transform="translate(830 150)">
+          <rect class="bg" width="100" height="40" rx="2"/>
+          <text x="8" y="15" class="k">RÜZGAR</text><text x="8" y="31" class="v" id="windV">--</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <div class="status">
+      <div class="st heat" id="stHeat"><i></i><div><small>Isıtma</small><b>KAPALI</b><span class="rs" id="rHeat"></span></div></div>
+      <div class="st blue" id="stVent"><i></i><div><small>Tavan</small><b>KAPALI</b><span class="rs" id="rVent"></span></div></div>
+      <div class="st blue" id="stWin"><i></i><div><small>Pencereler</small><b>KAPALI</b><span class="rs" id="rWin"></span></div></div>
+      <div class="st fan" id="stFan"><i></i><div><small>Egzoz fanı</small><b>KAPALI</b><span class="rs" id="rFan"></span></div></div>
+      <div class="st fan" id="stCirc"><i></i><div><small>Sirk. fanı</small><b>KAPALI</b><span class="rs" id="rCirc"></span></div></div>
+      <div class="st blue" id="stRain"><i></i><div><small>Yağmur</small><b>YOK</b><span class="rs" id="rRain"></span></div></div>
+      <div class="st warnc" id="stWind"><i></i><div><small>Rüzgar</small><b>0.0 m/s</b><span class="rs" id="rWind"></span></div></div>
+    </div>
+  </section>
+
+  <nav class="mtabs" role="tablist">
+    <button class="on" data-p="p-ctl" data-g="in">İç sensörler</button><button data-p="p-ctl" data-g="out">Hedef · Dış</button><button data-p="p-rules" data-t="rules">Kurallar</button><button data-p="p-rules" data-t="sim">Simül.</button><button data-p="p-rules" data-t="eng">Hesaplar</button>
+  </nav>
+
+  <section class="dock p-ctl card on" data-g="in">
+    <div class="grp g-set">
+      <div class="blk">
+        <b>Hedef</b>
+        <label class="nf">Sıcaklık<input type="number" id="pTset" step="0.5" value="24"><em>°C</em></label>
+        <label class="nf">Nem<input type="number" id="pHset" step="1" value="70"><em>%</em></label>
+        <select id="pSrc" aria-label="Kontrol değeri">
+          <option value="AVG">Kontrol: Ortalama (S1–S3)</option><option value="S1">Kontrol: S1 · alt bölge</option>
+          <option value="S2">Kontrol: S2 · üst bölge</option><option value="S3">Kontrol: S3 · sağ bölge</option>
+        </select>
+      </div>
+    </div>
+    <div class="grp g-in" id="sensIn"></div>
+    <div class="grp g-out">
+      <div id="sensOut"></div>
+      <div class="blk">
+        <b>Dış etkenler</b>
+        <div class="gauges" id="gExt"></div>
+        <div class="sl"><span>Rüz.</span><input id="pWind" type="range" min="0" max="25" step="0.5" value="3" aria-label="Rüzgar hızı"><output id="oWind"></output></div>
+        <div class="sl"><span>Gün.</span><input id="pSolar" type="range" min="0" max="1100" step="10" value="450" aria-label="Güneş ışınımı (GS-01)"><output id="oSolar"></output></div>
+        <div class="sw2"><label class="sw">Yağmur <input id="pRain" type="checkbox"></label><label class="sw">Hatlar <input id="iWires" type="checkbox" checked></label></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="dock p-rules card" data-t="rules">
+    <div class="rtabs"><button class="on" data-t="rules" type="button">Kurallar</button><button data-t="sim" type="button">Simülasyon</button><button data-t="eng" type="button">Hesaplar</button></div>
+    <div class="rtab t-rules">
+    <h3>Kurallar <span class="rgrp" id="rgrp"><button class="on" data-g="a" type="button">İklim</button><button data-g="b" type="button">Dış · Güvenlik</button><button data-g="c" type="button">Alarm</button></span><button class="rreset" id="ruleExport" type="button" title="Kuralları, hedefleri ve sera parametrelerini dosyaya kaydet">Dışa aktar</button><button class="rreset" id="ruleImport" type="button" title="Kaydedilmiş dosyadan geri yükle">İçe aktar</button><button class="rreset" id="ruleReset" type="button">Varsayılana dön</button><input type="file" id="ruleFile" accept=".json,application/json" hidden><span class="mut" id="ruleHint"></span></h3>
+    <p class="cv" id="ctlVal"></p>
+    <ul class="rules" id="ruleList" data-show="a"></ul>
+    </div>
+    <div class="rtab t-eng">
+      <p class="geo" id="engSrc"></p>
+      <div class="eng" id="engBody"></div>
+    </div>
+    <div class="rtab t-sim">
+      <label class="sw rtsw"><span><b>RTS</b> · gerçek zamanlı simülasyon</span><input id="rtsOn" type="checkbox"></label>
+      <div class="pg3">
+        <label>İklim<select id="rtsClimate"></select></label>
+        <label>Mevsim<select id="rtsSeason"></select></label>
+        <label>Hava durumu<select id="rtsWeather"></select></label>
+        <label>Başlangıç<select id="rtsStart"></select></label>
+      </div>
+      <div class="rtsrow">
+        <div class="seg sm" id="rtsSpeed"><button data-s="1" type="button">1×</button><button data-s="10" type="button">10×</button><button data-s="60" class="on" type="button">60×</button><button data-s="300" type="button">300×</button><button data-s="900" type="button">900×</button></div>
+        <button class="btn sm" id="rtsPause" type="button">II</button><button class="btn sm" id="rtsReset" type="button">Başa al</button>
+      </div>
+      <div class="rtsclock"><b id="rtsClock">--:--</b><span id="rtsInfo">Kapalı</span></div>
+      <details class="acc" open><summary>Olaylar</summary>
+        <p class="evhint" id="evHint">Olaylar yalnızca RTS açıkken tetiklenebilir.</p>
+        <div class="evgrid" id="evGrid"></div>
+        <div class="evopt"><label class="sw">Rastgele olaylar <input id="rtsRand" type="checkbox"></label><label class="sw">Sulama 08:00 · 14:00 <input id="rtsIrrig" type="checkbox" checked></label></div>
+      </details>
+      <details class="acc" id="logAcc"><summary>Olay günlüğü</summary><ol class="elog" id="rtsLog"></ol></details>
+      <details class="acc"><summary>Sera boyutları</summary>
+        <div class="pg">
+          <label>En<span><input type="number" data-rp="W" step="0.5"><em>m</em></span></label>
+          <label>Boy<span><input type="number" data-rp="L" step="1"><em>m</em></span></label>
+          <label>Yan duvar yüksekliği<span><input type="number" data-rp="Hw" step="0.1"><em>m</em></span></label>
+          <label>Mahya yüksekliği<span><input type="number" data-rp="Hr" step="0.1"><em>m</em></span></label>
+          <label class="full">Örtü<select id="rtsCover" data-rp="cover"></select></label>
+        </div>
+        <p class="geo" id="geoInfo"></p>
+      </details>
+      <details class="acc"><summary>Havalandırma ve fanlar</summary>
+        <div class="pg">
+          <label>Egzoz fanı adedi<span><input type="number" data-rp="fanN" step="1"><em>ad</em></span></label>
+          <label>Fan debisi (adet)<span><input type="number" data-rp="fanQ" step="500"><em>m³/sa</em></span></label>
+          <label>Egzoz fan gücü<span><input type="number" data-rp="fanP" step="0.05"><em>kW</em></span></label>
+          <label>Sirk. fanı adedi<span><input type="number" data-rp="circN" step="1"><em>ad</em></span></label>
+          <label>Tavan açıklık alanı<span><input type="number" data-rp="ventA" step="1"><em>m²</em></span></label>
+          <label>Pencere açıklık alanı<span><input type="number" data-rp="winA" step="1"><em>m²</em></span></label>
+          <label>Tavan açılma süresi<span><input type="number" data-rp="ventT" step="10"><em>sn</em></span></label>
+          <label>Pencere açılma süresi<span><input type="number" data-rp="winT" step="10"><em>sn</em></span></label>
+          <label>Motor hareket arası bekleme<span><input type="number" data-rp="motorWait" step="30"><em>sn</em></span></label>
+        </div>
+      </details>
+      <details class="acc"><summary>Isıtma, bitki ve yapı</summary>
+        <div class="pg">
+          <label>Isıtma kapasitesi<span><input type="number" data-rp="heatKW" step="5"><em>kW</em></span></label>
+          <label>Kazan verimi<span><input type="number" data-rp="heatEff" step="1"><em>%</em></span></label>
+          <label>Boru ısınma süresi (τ)<span><input type="number" data-rp="heatTau" step="1"><em>dk</em></span></label>
+          <label>Isıl kütle (zemin+bitki)<span><input type="number" data-rp="mass" step="5"><em>kJ/m²K</em></span></label>
+          <label>Güneşin havaya ısı payı<span><input type="number" data-rp="sensible" step="5"><em>%</em></span></label>
+          <label>Güneşin terlemeye payı<span><input type="number" data-rp="latent" step="5"><em>%</em></span></label>
+          <label>Sızıntı (hava kaçağı)<span><input type="number" data-rp="leak" step="0.1"><em>/sa</em></span></label>
+          <label>Röle koruma süresi<span><input type="number" data-rp="relay" step="10"><em>sn</em></span></label>
+        </div>
+        <button class="btn sm" id="rtsParReset" type="button">Varsayılan parametreler</button>
+      </details>
+      <div class="res" id="rtsRes"></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = (id) => document.getElementById(id);
+  const svg = $('sera');
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.append(e);
+    return e;
+  };
+  const f1 = (v) => (isFinite(v) ? v.toFixed(1) : '---');
+  const pct = (v) => '%' + Math.round(v * 100);
+
+  /* ---------------- Durum ---------------- */
+  const sens = {
+    S1: { name: 'S1 · Alt-sol', tag: 'TT/MT-101', t: 22.0, h: 68 },
+    S2: { name: 'S2 · Orta-üst', tag: 'TT/MT-102', t: 25.0, h: 62 },
+    S3: { name: 'S3 · Sağ', tag: 'TT/MT-103', t: 23.0, h: 66 },
+    S4: { name: 'S4 · Dış', tag: 'TT/MT-201', t: 16.0, h: 60 },
+  };
+  const env = { wind: 3, rain: false, solar: 450 };
+  const target = { T: 24, H: 70, src: 'AVG' };
+  const cmd = { window: 0, vent: 0, fan: false, heater: false, circ: false };
+  const pos = { window: 0, vent: 0, fan: 0, heat: 0, circ: 0 };
+  const why = {};
+
+  // Kural ayarları (istenen değere göre fark): a = devreye girme eşiği, b = devreden çıkma eşiği, p = açıklık yüzdesi
+  const RDEF = {
+    heat:     { on: true, a: -1.0, b: 0.3 },
+    vent1:    { on: true, a: 1.0, b: 0.3, p: 50 },
+    vent2:    { on: true, a: 2.0, b: 1.2, p: 100 },
+    win:      { on: true, a: 3.0, b: 2.0, p: 100 },
+    fan:      { on: true, a: 4.0, b: 2.5 },
+    humV:     { on: true, a: 10, b: 5, p: 30 },
+    humF:     { on: true, a: 20, b: 12 },
+    circT:    { on: true, a: 2.0, b: 1.0 },
+    circHeat: { on: true },
+    outT:     { on: true, a: 1.0, b: 0.5 },
+    outCold:  { on: true, a: 10, b: 8, p: 30 },
+    outH:     { on: true, a: 1.5, b: 0.3 },
+    heatLock: { on: true },
+    rain:     { on: true },
+    wind:     { on: true, a: 10, b: 8 },
+    // Alarmlar (mutlak eşikler)
+    al_tHigh: { on: true, a: 35, b: 33 },
+    al_tLow:  { on: true, a: 5, b: 7 },
+    al_hHigh: { on: true, a: 92, b: 85 },
+    al_hLow:  { on: true, a: 35, b: 40 },
+    al_sens:  { on: true, a: 4, b: 2 },
+    al_wind:  { on: true, a: 15, b: 12 },
+    al_power: { on: true },
+    al_sys:   { on: true },
+  };
+  const RU = JSON.parse(JSON.stringify(RDEF));
+  // [anahtar, ad, renk, birim, yüzde alanı, not, açıklama]
+  const RULES = [
+    ['heat', 'Isıtma', 'heat', '°C', false, '', 'Devreye: sıcaklık < istenen + Gir · Devreden çıkış: sıcaklık ≥ istenen + Çık'],
+    ['vent1', 'Tavan K1', 'vent', '°C', true, '', 'Devreye: sıcaklık > istenen + Gir · Çıkış: sıcaklık ≤ istenen + Çık · tavan % kadar açılır'],
+    ['vent2', 'Tavan K2', 'vent', '°C', true, '', 'Devreye: sıcaklık > istenen + Gir · Çıkış: sıcaklık ≤ istenen + Çık · tavan % kadar açılır'],
+    ['win', 'Pencereler', 'vent', '°C', true, '', 'Devreye: sıcaklık > istenen + Gir · Çıkış: sıcaklık ≤ istenen + Çık · pencere % kadar açılır'],
+    ['fan', 'Egzoz fanı', 'fan', '°C', false, '', 'Devreye: sıcaklık > istenen + Gir · Çıkış: sıcaklık ≤ istenen + Çık'],
+    ['humV', 'Tavan (nem)', 'vent', '%RH', true, '', 'Devreye: nem > istenen + Gir · Çıkış: nem ≤ istenen + Çık · tavan en az % kadar açılır'],
+    ['humF', 'Egzoz (nem)', 'fan', '%RH', false, '', 'Devreye: nem > istenen + Gir · Çıkış: nem ≤ istenen + Çık'],
+    ['circT', 'Sirk. (fark)', 'circ', '°C', false, '', 'İç sensörler arasındaki en büyük fark: Devreye > Gir · Çıkış ≤ Çık'],
+    ['circHeat', 'Sirk. (ısıtma)', 'circ', '', false, 'ısıtmada açık', 'Isıtma çalışırken sıcak havayı dağıtmak için sirkülasyon fanı açık'],
+    ['outT', 'Dış serinlik', 'dis', '°C', false, '', 'Soğutma izni: iç − dış ≥ Gir olunca verilir, iç − dış < Çık olunca kalkar'],
+    ['outCold', 'Dış soğuk', 'dis', '°C', true, '', 'İç − dış > Gir olunca tavan/pencere % ile sınırlanır, ≤ Çık olunca sınır kalkar'],
+    ['outH', 'Dış kuruluk', 'dis', 'g/m³', false, '', 'Nem atma izni: iç − dış MUTLAK nem ≥ Gir olunca verilir, < Çık olunca kalkar (soğuk dış hava %90 bağıl nemde bile kuru olabilir)'],
+    ['heatLock', 'Isıtmada kilit', 'heat', '', false, 'pencere+egzoz', 'Isıtma çalışırken pencere ve egzoz kapalı, tavan yalnızca nem için açılır'],
+    ['rain', 'Yağmurda kapat', 'alarm', '', false, 'tavan+pencere', 'Yağmur varken tavan ve pencere kapalı'],
+    ['wind', 'Rüzgarda kapat', 'alarm', 'm/s', false, '', 'Devreye: rüzgar > Gir · Çıkış: rüzgar ≤ Çık · tavan ve pencere kapanır'],
+    ['al_tHigh', 'Aşırı sıcaklık', 'crit', '°C', false, '', 'ALARM: herhangi bir iç sensör > Gir °C · normale dönüş ≤ Çık °C (mutlak değer)'],
+    ['al_tLow', 'Düşük sıcaklık / don', 'crit', '°C', false, '', 'ALARM: herhangi bir iç sensör < Gir °C · normale dönüş ≥ Çık °C (mutlak değer)'],
+    ['al_hHigh', 'Yüksek nem', 'crit', '%RH', false, '', 'ALARM: ortalama nem > Gir · normale dönüş ≤ Çık (yoğuşma ve mantar riski)'],
+    ['al_hLow', 'Düşük nem', 'crit', '%RH', false, '', 'ALARM: ortalama nem < Gir · normale dönüş ≥ Çık (bitkide su stresi)'],
+    ['al_sens', 'Sensör arızası', 'crit', '°C', false, '', 'ALARM: bir iç sensör diğerlerinden > Gir °C sapar ya da 10 dk boyunca hiç değişmezse (donma) · normale dönüş ≤ Çık °C'],
+    ['al_wind', 'Fırtına', 'crit', 'm/s', false, '', 'ALARM: rüzgar > Gir · normale dönüş ≤ Çık'],
+    ['al_power', 'Elektrik kesintisi', 'crit', '', false, 'enerji girişi', 'ALARM: şebeke enerjisi yok (enerji izleme girişi)'],
+    ['al_sys', 'Sistem arızası', 'crit', '', false, 'arıza girişleri', 'ALARM: kazan arıza kontağı, fan motor koruma şalteri veya pencere motoru zaman aşımı'],
+  ];
+  const active = {};
+  const L = {};   // kural kilitleri: bir kural devreye girince çıkış eşiğine kadar devrede kalır (histerezis)
+  const absHumC = (T, RH) => (216.7 * (RH / 100) * 6.112 * Math.exp((17.62 * T) / (243.12 + T))) / (273.15 + T);   // mutlak nem g/m³
+  const latch = (k, enter, exit) => { if (!RU[k].on) return (L[k] = false); if (!L[k] && enter) L[k] = true; else if (L[k] && exit) L[k] = false; return !!L[k]; };
+
+  /* ---------------- Alarmlar ---------------- */
+  // alarms: anahtar -> { txt, els (çizimde yanıp sönecek öğeler) }
+  const alarms = new Map(), ackd = new Set();
+  let FC = false;   // gelecek tahmini hesaplanırken true: alarm ve günlük etkilenmez
+  function evalAlarms(inT, avgH) {
+    if (FC) return;
+    const r = RU, maxT = Math.max(...inT), minT = Math.min(...inT);
+    const keys = ['S1', 'S2', 'S3'], med = [...inT].sort((a, b) => a - b)[1];
+    const now = new Map();
+    const hot = keys.filter((k) => sens[k].t > r.al_tHigh.b), cold = keys.filter((k) => sens[k].t < r.al_tLow.b);
+    if (latch('al_tHigh', maxT > r.al_tHigh.a, maxT <= r.al_tHigh.b)) now.set('al_tHigh', { txt: `Aşırı sıcaklık ${f1(maxT)} °C · sınır ${f1(r.al_tHigh.a)} / dönüş ${f1(r.al_tHigh.b)}`, els: hot.length ? hot : keys });
+    if (latch('al_tLow', minT < r.al_tLow.a, minT >= r.al_tLow.b)) now.set('al_tLow', { txt: `Düşük sıcaklık ${f1(minT)} °C · sınır ${f1(r.al_tLow.a)} / dönüş ${f1(r.al_tLow.b)}`, els: cold.length ? cold : keys });
+    if (latch('al_hHigh', avgH > r.al_hHigh.a, avgH <= r.al_hHigh.b)) now.set('al_hHigh', { txt: `Yüksek nem %${f1(avgH)} · sınır %${r.al_hHigh.a} / dönüş %${r.al_hHigh.b}`, els: keys });
+    if (latch('al_hLow', avgH < r.al_hLow.a, avgH >= r.al_hLow.b)) now.set('al_hLow', { txt: `Düşük nem %${f1(avgH)} · sınır %${r.al_hLow.a} / dönüş %${r.al_hLow.b}`, els: keys });
+    const dev = keys.map((k) => [k, Math.abs(sens[k].t - med)]), maxDev = Math.max(...dev.map((d) => d[1]));
+    const stuck = typeof RTS !== 'undefined' && RTS.on ? RTS.stuck() : [];
+    const sensOn = latch('al_sens', maxDev > r.al_sens.a || stuck.length > 0, maxDev <= r.al_sens.b && stuck.length === 0);
+    if (sensOn) {
+      const bad = [...new Set([...dev.filter((d) => d[1] > r.al_sens.b).map((d) => d[0]), ...stuck])];
+      now.set('al_sens', { txt: `Sensör arızası: ${bad.join(', ') || '—'}${stuck.length ? ' (değer donmuş)' : ` (sapma ${f1(maxDev)} °C)`}`, els: bad });
+    }
+    if (latch('al_wind', env.wind > r.al_wind.a, env.wind <= r.al_wind.b)) now.set('al_wind', { txt: `Fırtına: rüzgar ${f1(env.wind)} m/s`, els: ['windSensor'] });
+    const rts = typeof RTS !== 'undefined' && RTS.on;
+    if (r.al_power.on && rts && RTS.isAct('elektrik')) now.set('al_power', { txt: 'Elektrik kesintisi — ekipman durdu', els: ['ctrl'] });
+    if (r.al_sys.on && rts) {
+      const f = [], els = [];
+      if (RTS.isAct('kazan')) { f.push('kazan'); els.push('heating'); }
+      if (RTS.isAct('fanariza')) { f.push('egzoz fanı'); els.push('fan'); }
+      if (RTS.isAct('motor')) { f.push('pencere motoru'); els.push('motL', 'motR', 'winL', 'winR'); }
+      if (f.length) now.set('al_sys', { txt: `Sistem arızası: ${f.join(', ')}`, els });
+    }
+    // Değişimleri günlüğe yaz
+    for (const [k, a] of now) if (!alarms.has(k) && rts) RTS.log(`ALARM: ${a.txt}`, 'alm');
+    for (const k of alarms.keys()) if (!now.has(k)) { ackd.delete(k); if (rts) RTS.log(`Alarm sona erdi: ${alarms.get(k).txt}`, 'info'); }
+    alarms.clear(); for (const [k, a] of now) alarms.set(k, a);
+    for (const [k] of RULES.filter((x) => x[0].startsWith('al_'))) active[k] = alarms.has(k);
+  }
+  const ALM_ELS = ['S1', 'S2', 'S3', 'windSensor', 'ctrl', 'heating', 'fan', 'motL', 'motR', 'winL', 'winR'];
+  function renderAlarms() {
+    const box = $('alarmBox'), list = [...alarms.entries()];
+    const unack = list.some(([k]) => !ackd.has(k));
+    for (const id of ALM_ELS) { const e = $(id); if (e) { e.classList.remove('alm', 'ack'); } }
+    for (const [k, a] of list) for (const id of a.els) { const e = $(id); if (e) { e.classList.add('alm'); if (ackd.has(k)) e.classList.add('ack'); } }
+    // Bir öğe hem onaylı hem onaysız alarmdaysa yanıp sönmeye devam etsin
+    for (const [k, a] of list) if (!ackd.has(k)) for (const id of a.els) { const e = $(id); if (e) e.classList.remove('ack'); }
+    box.hidden = !list.length;
+    box.classList.toggle('blink', unack);
+    // Başlık ve düğme bir kez oluşturulur; yalnızca liste güncellenir (düğme tıklaması kaybolmasın)
+    if (!$('almAck')) box.innerHTML = '<div class="ah"><b id="almCnt"></b><button type="button" id="almAck">Onayla</button><span id="almOk">onaylandı</span></div><div id="almList"></div>';
+    $('almCnt').textContent = `ALARM (${list.length})`;
+    $('almAck').hidden = !unack; $('almOk').hidden = unack;
+    const html = list.map(([k, a]) => `<div class="ai ${ackd.has(k) ? 'ack' : ''}">${a.txt}</div>`).join('');
+    const al = $('almList'); if (al.dataset.h !== html) { al.innerHTML = html; al.dataset.h = html; }
+    const led = $('ledErr');
+    if (list.length) { led.setAttribute('fill', '#d32f2f'); led.setAttribute('opacity', 1); led.classList.toggle('blinkfill', unack); }
+    else led.classList.remove('blinkfill');
+  }
+
+  /* ---------------- Kontrol kuralları ---------------- */
+  function control() {
+    const inT = ['S1', 'S2', 'S3'].map((k) => sens[k].t);
+    const avgT = inT.reduce((a, b) => a + b, 0) / 3;
+    const avgH = (sens.S1.h + sens.S2.h + sens.S3.h) / 3;
+    const spread = Math.max(...inT) - Math.min(...inT);
+    const T = target.src === 'AVG' ? avgT : sens[target.src].t;
+    const H = avgH;
+    const lbl = target.src === 'AVG' ? 'Ortalama' : target.src;
+    const Ts = target.T, Hs = target.H, out = sens.S4, r = RU;
+    const dT = T - out.t, dH = absHumC(avgT, H) - absHumC(out.t, out.h);   // sıcaklık farkı ve mutlak nem farkı
+
+    const n = {
+      vent1: latch('vent1', T > Ts + r.vent1.a, T <= Ts + r.vent1.b),
+      vent2: latch('vent2', T > Ts + r.vent2.a, T <= Ts + r.vent2.b),
+      win:   latch('win', T > Ts + r.win.a, T <= Ts + r.win.b),
+      fan:   latch('fan', T > Ts + r.fan.a, T <= Ts + r.fan.b),
+      humV:  latch('humV', H > Hs + r.humV.a, H <= Hs + r.humV.b),
+      humF:  latch('humF', H > Hs + r.humF.a, H <= Hs + r.humF.b),
+    };
+    const heat = latch('heat', T < Ts + r.heat.a, T >= Ts + r.heat.b);
+    const coolOK = !r.outT.on || latch('outT', dT >= r.outT.a, dT < r.outT.b);
+    const dryOK = !r.outH.on || latch('outH', dH >= r.outH.a, dH < r.outH.b);
+    const cold = latch('outCold', dT > r.outCold.a, dT <= r.outCold.b);
+    const windHi = latch('wind', env.wind > r.wind.a, env.wind <= r.wind.b);
+    const circT = latch('circT', spread > r.circT.a, spread <= r.circT.b);
+    const rain = r.rain.on && env.rain;
+    const R = {
+      heat, vent1: n.vent1 && coolOK, vent2: n.vent2 && coolOK, win: n.win && coolOK, fan: n.fan && coolOK,
+      humV: n.humV && dryOK, humF: n.humF && dryOK, circT, rain, wind: windHi,
+    };
+    const tooWarm = `Dış hava yeterince serin değil (fark ${f1(dT)} °C)`;
+    const tooWet = `Dış hava yeterince kuru değil (fark ${f1(dH)} g/m³)`;
+    // Gerekçe: giriş eşiği aşıldıysa "> eşik", kilitli bekliyorsa "çıkış eşiği" yazılır
+    const rUp = (k, val, unit, base) => (val > base + r[k].a ? `${lbl} ${f1(val)}${unit} > ${f1(base + r[k].a)}${unit}` : `${lbl} ${f1(val)}${unit} · çıkış ≤ ${f1(base + r[k].b)}${unit}`);
+    const rHum = (k) => (H > Hs + r[k].a ? `Nem %${f1(H)} > %${f1(Hs + r[k].a)}` : `Nem %${f1(H)} · çıkış ≤ %${f1(Hs + r[k].b)}`);
+
+    // Isıtma
+    cmd.heater = R.heat;
+    why.heat = R.heat ? (T < Ts + r.heat.a ? `${lbl} ${f1(T)} °C < ${f1(Ts + r.heat.a)} °C` : `${lbl} ${f1(T)} °C · çıkış ≥ ${f1(Ts + r.heat.b)} °C`) : 'Gerek yok';
+
+    // Tavan
+    let v = 0; why.vent = n.vent1 || n.vent2 ? tooWarm : n.humV ? tooWet : 'Gerek yok';
+    if (R.vent1 && r.vent1.p / 100 > v) { v = r.vent1.p / 100; why.vent = rUp('vent1', T, ' °C', Ts); }
+    if (R.vent2 && r.vent2.p / 100 > v) { v = r.vent2.p / 100; why.vent = rUp('vent2', T, ' °C', Ts); }
+    if (R.humV && r.humV.p / 100 > v) { v = r.humV.p / 100; why.vent = rHum('humV'); }
+
+    // Pencere
+    let w = R.win ? r.win.p / 100 : 0;
+    why.win = R.win ? rUp('win', T, ' °C', Ts) : n.win ? tooWarm : 'Gerek yok';
+
+    // Egzoz fanı
+    cmd.fan = R.fan || R.humF;
+    why.fan = R.fan ? rUp('fan', T, ' °C', Ts) : R.humF ? rHum('humF') : n.fan ? tooWarm : n.humF ? tooWet : 'Gerek yok';
+
+    // Isıtma çalışırken kilit
+    const lock = r.heatLock.on && cmd.heater;
+    if (lock) {
+      w = 0; why.win = 'Isıtma çalışıyor';
+      cmd.fan = false; why.fan = 'Isıtma çalışıyor';
+      if (!R.humV) { v = 0; why.vent = 'Isıtma çalışıyor'; }
+    }
+
+    // Soğuk dış hava sınırı
+    let coldHit = false;
+    if (cold) {
+      const mx = r.outCold.p / 100;
+      if (v > mx) { v = mx; why.vent += ` · dış soğuk, en fazla %${r.outCold.p}`; coldHit = true; }
+      if (w > mx) { w = mx; why.win += ` · dış soğuk, en fazla %${r.outCold.p}`; coldHit = true; }
+    }
+
+    // Güvenlik
+    if (R.rain) { v = 0; w = 0; why.vent = why.win = 'Yağmur'; }
+    if (R.wind) { v = 0; w = 0; why.vent = why.win = `Rüzgar ${f1(env.wind)} m/s · çıkış ≤ ${f1(r.wind.b)} m/s`; }
+    cmd.vent = v; cmd.window = w;
+
+    // Sirkülasyon fanı
+    const circHeat = r.circHeat.on && cmd.heater;
+    cmd.circ = R.circT || circHeat;
+    why.circ = R.circT ? (spread > r.circT.a ? `Bölgeler arası fark ${f1(spread)} °C > ${f1(r.circT.a)} °C` : `Fark ${f1(spread)} °C · çıkış ≤ ${f1(r.circT.b)} °C`)
+             : circHeat ? 'Isıtma çalışıyor — ısı dağıtımı' : `Fark ${f1(spread)} °C — gerek yok`;
+
+    Object.assign(active, R, {
+      vent1: R.vent1 && !(R.vent2 && r.vent2.p >= r.vent1.p), heatLock: lock, circHeat,
+      outT: (n.vent1 || n.vent2 || n.win || n.fan) && !coolOK, outH: (n.humV || n.humF) && !dryOK, outCold: coldHit,
+    });
+    evalAlarms(inT, avgH);
+    return { avgT, avgH, T, lbl, dT, dH, spread };
+  }
+
+  /* ---------------- Çizim öğeleri ---------------- */
+  const leafD = (l) => `M0 0 C ${l*.3} ${-l*.36}, ${l*.8} ${-l*.3}, ${l} 0 C ${l*.8} ${l*.3}, ${l*.3} ${l*.3}, 0 0 Z`;
+  [420, 452, 484, 528, 590, 622, 654, 690].forEach((x, i) => {
+    const g = el('g', {}, $('plants'));
+    el('line', { x1: x, y1: 452, x2: x, y2: 420 + (i % 3) * 3, style: 'stroke:var(--plant2);stroke-width:1.5' }, g);
+    [[446,-155,14,1],[446,-25,14,2],[436,-145,12,2],[436,-35,12,1],[426,-118,10,1],[426,-62,10,2],[421 + (i%3)*3,-90,8,1]]
+      .forEach(([y, r, l, c]) => el('path', { d: leafD(l), style: `fill:var(--plant${c === 1 ? '' : '2'})`, transform: `translate(${x} ${y}) rotate(${r})` }, g));
+    el('path', { d: `M${x-9} 453 h18 l-3 16 h-12 z`, style: 'fill:var(--pot)' }, g);
+  });
+  for (const x of [280, 380, 475, 640]) {
+    el('rect', { class: 'pipeHalo', x: x - 16, y: 490, width: 32, height: 20, rx: 10 }, $('pipes'));
+    el('circle', { class: 'pipe', cx: x - 6, cy: 500, r: 4.5 }, $('pipes'));
+    el('circle', { class: 'pipe', cx: x + 6, cy: 500, r: 4.5 }, $('pipes'));
+    for (const dx of [-6, 6]) el('path', { class: 'rise', d: `M${x + dx} 492 q3 -6 0 -12 q-3 -6 0 -12` }, $('rise'));
+  }
+  el('text', { class: 'etag', x: 452, y: 516 }, $('heating')).textContent = 'ISITMA HATTI (Ø51)';
+
+  // İç sirkülasyon fanı (CF-01): çatı aşığına asılı, sera boyunca hava karıştırır
+  {
+    const cf = el('g', { id: 'circFan' }); svg.insertBefore(cf, $('sensors'));
+    el('line', { x1: 590, y1: 245, x2: 590, y2: 261, class: 'eqline' }, cf);
+    el('rect', { class: 'halo', x: 567, y: 255, width: 46, height: 46, rx: 2, style: 'stroke:var(--fan)' }, cf);
+    el('circle', { cx: 590, cy: 278, r: 17, class: 'eq' }, cf);
+    el('circle', { cx: 590, cy: 278, r: 14, style: 'fill:var(--sky);stroke:var(--equipLine);stroke-width:1' }, cf);
+    const sc = el('g', { transform: 'translate(590 278) scale(0.52) translate(-760 -455)' }, cf);
+    const rot = el('g', { id: 'circRot' }, sc);
+    const bd = 'M760 455 C 753 442, 756 433, 765 431 C 769 440, 767 449, 760 455 Z';
+    for (const a of [0, 120, 240]) el('path', { d: bd, transform: `rotate(${a} 760 455)` }, rot);
+    el('circle', { cx: 590, cy: 278, r: 2.5, class: 'eq' }, cf);
+    const fl = el('g', { id: 'circFlow', opacity: 0 }, cf);
+    el('path', { class: 'flow', d: 'M548 298 Q590 318 632 298' }, fl);
+    el('path', { class: 'flow', d: 'M632 258 Q590 238 548 258' }, fl);
+    el('text', { class: 'etag', x: 612, y: 262 }, cf).textContent = 'CF-01';
+    const ch = el('g', { id: 'chipCirc', class: 'chip', transform: 'translate(538 306)' }, svg); svg.insertBefore(ch, $('sensors'));
+    el('rect', { width: 110, height: 17, rx: 2 }, ch); el('rect', { class: 'ind', x: 7, y: 5.5, width: 6, height: 6 }, ch);
+    el('text', { x: 19, y: 12.3 }, ch).textContent = 'SİRK. FAN · KAPALI';
+    el('path', { d: 'M590 322 V296' }, $('wires'));
+  }
+
+  // Güneş ışınım sensörü (GS-01, piranometre): rüzgar direğinde
+  {
+    const gs = el('g', { id: 'solarSens' }); svg.insertBefore(gs, $('sensors'));
+    el('line', { x1: 880, y1: 300, x2: 864, y2: 300, class: 'eqline' }, gs);
+    el('rect', { x: 849, y: 299, width: 16, height: 4, class: 'eq' }, gs);
+    el('path', { d: 'M851 299 a6 6 0 0 1 12 0 z', class: 'eq' }, gs);
+    el('text', { class: 'etag', x: 812, y: 297 }, gs).textContent = 'GS-01';
+    const t = el('g', { class: 'tag', transform: 'translate(716 196)' }, gs);
+    el('rect', { class: 'bg', width: 100, height: 40, rx: 2 }, t);
+    el('text', { x: 8, y: 15, class: 'k' }, t).textContent = 'GÜNEŞ · GS-01';
+    el('text', { x: 8, y: 31, class: 'v', id: 'solarV' }, t);
+  }
+
+  const SENS_DRAW = [
+    { id: 'S1', label: 'S1', x: 262, y: 378, mount: 'M222 378 H251', tag: [284, 357] },
+    { id: 'S2', label: 'S2', x: 490, y: 292, mount: 'M490 184 V279', tag: [374, 272] },
+    { id: 'S3', label: 'S3', x: 690, y: 350, mount: 'M701 350 H758', tag: [578, 372] },
+    { id: 'S4', label: 'S4 DIŞ', x: 906, y: 330, mount: 'M880 330 H895', tag: [884, 346] },
+  ];
+  for (const s of SENS_DRAW) {
+    const g = el('g', { id: s.id }, $('sensors'));
+    el('path', { d: s.mount, class: 'eqline' }, g);
+    for (let k = 0; k < 4; k++) el('rect', { x: s.x - 10, y: s.y - 10 + k * 5.5, width: 20, height: 3.5, class: 'eq', style: 'stroke-width:.9' }, g);
+    el('rect', { x: s.x - 1.5, y: s.y + 12, width: 3, height: 4, style: 'fill:var(--equipLine)' }, g);
+    const t = el('g', { class: 'tag', transform: `translate(${s.tag[0]} ${s.tag[1]})` }, g);
+    el('rect', { class: 'bg', width: 112, height: 40, rx: 2 }, t);
+    el('text', { x: 8, y: 15, class: 'k' }, t).textContent = `${s.label} · ${sens[s.id].tag}`;
+    el('text', { x: 8, y: 31, class: 'v', id: s.id + 'v' }, t);
+  }
+
+  const drops = Array.from({ length: 110 }, () => {
+    const l = el('line', {}, $('rain')); l.style.display = 'none';
+    return { l, x: 0, y: 0, v: 7 + Math.random() * 4, alive: false };
+  });
+  const streaks = Array.from({ length: 12 }, () => ({ l: el('line', {}, $('wind')), x: Math.random() * 1000, y: 30 + Math.random() * 260, len: 40 + Math.random() * 40 }));
+
+  /* ---------------- Arayüz ---------------- */
+  const setStatus = (id, on, text) => { const e = $(id); e.classList.toggle('on', on); e.querySelector('b').textContent = text; };
+  const setChip = (id, on, label, onText = 'AÇIK') => {
+    const g = $(id), t = g.querySelector('text'), txt = `${label} · ${on ? onText : 'KAPALI'}`;
+    g.classList.toggle('on', on);
+    if (t.textContent !== txt || !g.dataset.sized) { t.textContent = txt; g.dataset.sized = 1; g.querySelector('rect').setAttribute('width', Math.ceil(t.getComputedTextLength() + 27)); }
+  };
+  const moving = (p, c) => (Math.abs(p - c) > 0.005 ? (c > p ? ' ▲' : ' ▼') : '');
+
+  function render() {
+    const c = control();
+    if (RTS.on) RTS.guard(why);
+    renderDom(c);
+  }
+  /* ---------------- İbreli göstergeler ---------------- */
+  // Yarım daire: merkez (35,38), yarıçap 28. f = 0 sol (en düşük), f = 1 sağ (en yüksek)
+  const GP = (f) => [35 - 28 * Math.cos(Math.PI * f), 38 - 28 * Math.sin(Math.PI * f)];
+  const gaugeSvg = (id, min, max) => {
+    let ticks = '';
+    for (let i = 0; i <= 10; i++) {
+      const a = Math.PI * (i / 10), r1 = i % 5 ? 24 : 22;
+      ticks += `<line class="gtk" x1="${(35 - 31 * Math.cos(a)).toFixed(1)}" y1="${(38 - 31 * Math.sin(a)).toFixed(1)}" x2="${(35 - r1 * Math.cos(a) * 1.0 - (31 - r1) * 0 ).toFixed(1)}" y2="${(38 - r1 * Math.sin(a)).toFixed(1)}"/>`;
+    }
+    return `<svg class="gauge" id="g_${id}" viewBox="0 0 70 50" role="img" aria-label="${id}">
+      <path class="gtr" d="M7 38 A28 28 0 0 1 63 38"/><path class="gbd"/>${ticks}
+      <g class="gnd"><line x1="35" y1="38" x2="12" y2="38"/></g><circle class="ghub" cx="35" cy="38" r="2.6"/>
+      <text class="gmin" x="3" y="48">${min}</text><text class="gmax" x="67" y="48">${max}</text><text class="gval" x="35" y="48"></text></svg>`;
+  };
+  function setGauge(id, v, min, max, lo, hi, txt, warnBand = false) {
+    const g = $('g_' + id); if (!g) return;
+    const f = Math.max(0, Math.min(1, (v - min) / (max - min)));
+    g.querySelector('.gnd').style.transform = `rotate(${(f * 180).toFixed(1)}deg)`;
+    const bd = g.querySelector('.gbd');
+    if (lo != null && hi != null && hi > lo) {
+      const a = Math.max(0, Math.min(1, (lo - min) / (max - min))), b = Math.max(0, Math.min(1, (hi - min) / (max - min)));
+      const [x1, y1] = GP(a), [x2, y2] = GP(b);
+      bd.setAttribute('d', `M${x1.toFixed(1)} ${y1.toFixed(1)} A28 28 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+      bd.classList.toggle('warn', warnBand);
+      g.classList.toggle('lo', !warnBand && v < lo); g.classList.toggle('hi', warnBand ? v > lo : v > hi);
+    } else { bd.removeAttribute('d'); g.classList.remove('lo', 'hi'); }
+    const t = g.querySelector('.gval'); if (t.textContent !== txt) t.textContent = txt;
+  }
+  function updateGauges() {
+    const tLo = target.T + RU.heat.a, tHi = target.T + RU.vent1.a;           // normal sıcaklık aralığı (ısıtma girişi – tavan girişi)
+    const hLo = target.H - 10, hHi = target.H + RU.humV.a;                    // normal nem aralığı
+    for (const k of ['S1', 'S2', 'S3']) {
+      setGauge(k + 't', sens[k].t, -10, 45, tLo, tHi, f1(sens[k].t) + '°');
+      setGauge(k + 'h', sens[k].h, 0, 100, hLo, hHi, '%' + Math.round(sens[k].h));
+    }
+    setGauge('S4t', sens.S4.t, -10, 45, null, null, f1(sens.S4.t) + '°');
+    setGauge('S4h', sens.S4.h, 0, 100, null, null, '%' + Math.round(sens.S4.h));
+    setGauge('wind', env.wind, 0, 25, RU.wind.on ? RU.wind.a : null, RU.wind.on ? 25 : null, f1(env.wind), true);
+    setGauge('solar', env.solar, 0, 1100, null, null, String(Math.round(env.solar)));
+  }
+
+  function renderDom(c) {
+    updateGauges();
+    renderAlarms();
+    for (const k in sens) $(k + 'v').textContent = `${f1(sens[k].t)}°C ${String(Math.round(sens[k].h)).padStart(3)}%RH`;
+    $('rainV').textContent = env.rain ? 'VAR' : 'YOK';
+    $('windV').textContent = f1(env.wind) + ' m/s';
+    $('solarV').textContent = Math.round(env.solar) + ' W/m²';
+    svg.classList.toggle('raining', env.rain);
+    $('rainPlate').style.fill = env.rain ? 'var(--open)' : '';
+
+    $('ctlVal').textContent = `Kontrol değeri: ${c.lbl} ${f1(c.T)} °C · nem %${f1(c.avgH)} · İ−D ${c.dT >= 0 ? '+' : ''}${f1(c.dT)} °C / ${c.dH >= 0 ? '+' : ''}${f1(c.dH)} g/m³`;
+    const rs = (id, t) => { const e = $(id); e.textContent = t; e.title = t; };
+    rs('rHeat', why.heat); rs('rVent', why.vent); rs('rWin', why.win); rs('rFan', why.fan); rs('rCirc', why.circ);
+    rs('rRain', env.rain ? (RU.rain.on ? 'Tavan/pencere kapalı' : 'Kural pasif') : 'Algılanmadı');
+    rs('rWind', !RU.wind.on ? 'Kural pasif' : L.wind ? `Kapatıldı · açılış ≤ ${f1(RU.wind.b)} m/s` : `Limit ${f1(RU.wind.a)} m/s`);
+    for (const [k, , cls] of RULES) {
+      const li = ruleEls[k];
+      li.classList.toggle('on', !!active[k]); li.classList.toggle(cls, !!active[k]);
+      li.classList.toggle('off', !RU[k].on);
+    }
+    $('ruleHint').textContent = `· eşikler istenene göre fark (${f1(target.T)} °C · %${target.H})`;
+  }
+
+  /* ---------------- Animasyon ---------------- */
+  const TRAVEL = { window: 3, vent: 4, fan: 1.2, heat: 2 };
+  const vis = { fanA: 0, anemoA: 0, dash: 0, rise: 0 };
+  const flows = [...document.querySelectorAll('#fanFlow path')];
+  let last = performance.now(), lastUi = 0, lastRts = 0, lastEng = 0;
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const mv = (cur, tgt, s) => { const d = dt / s; return cur < tgt ? Math.min(tgt, cur + d) : Math.max(tgt, cur - d); };
+    if (RTS.on) RTS.advance(dt);
+    else {
+      pos.window = mv(pos.window, cmd.window, TRAVEL.window);
+      pos.vent = mv(pos.vent, cmd.vent, TRAVEL.vent);
+      pos.fan = mv(pos.fan, cmd.fan ? 1 : 0, TRAVEL.fan);
+      pos.heat = mv(pos.heat, cmd.heater ? 1 : 0, TRAVEL.heat);
+      pos.circ = mv(pos.circ, cmd.circ ? 1 : 0, TRAVEL.fan);
+    }
+    vis.circA = ((vis.circA || 0) + pos.circ * 1100 * dt) % 360;
+    $('circRot').setAttribute('transform', `rotate(${vis.circA} 760 455)`);
+    $('circFlow').setAttribute('opacity', pos.circ.toFixed(2));
+
+    $('winL').setAttribute('transform', `rotate(${35 * pos.window} 220 340)`);
+    $('winR').setAttribute('transform', `rotate(${-35 * pos.window} 760 340)`);
+    $('vent').setAttribute('transform', `rotate(${-32 * pos.vent} 490 180)`);
+    vis.fanA = (vis.fanA + pos.fan * 900 * dt) % 360;
+    $('fanBlades').setAttribute('transform', `rotate(${vis.fanA} 760 455)`);
+    $('fanFlow').setAttribute('opacity', pos.fan.toFixed(2));
+    vis.dash = (vis.dash + dt * 30) % 13;
+    flows.forEach((p) => p.setAttribute('stroke-dashoffset', (-vis.dash).toFixed(1)));
+    document.querySelectorAll('#circFlow path').forEach((p) => p.setAttribute('stroke-dashoffset', (-vis.dash).toFixed(1)));
+    vis.rise = (vis.rise + dt * 14) % 12;
+    $('rise').setAttribute('opacity', (pos.heat * 0.9).toFixed(2));
+    $('rise').setAttribute('transform', `translate(0 ${-vis.rise})`);
+    $('warmAir').setAttribute('opacity', pos.heat.toFixed(2));
+    vis.anemoA = (vis.anemoA + env.wind * 60 * dt) % 360;
+    $('anemo').setAttribute('transform', `rotate(${vis.anemoA} 880 245)`);
+
+    const slant = env.wind * 0.5;
+    for (const d of drops) {
+      if (!d.alive) { if (!env.rain) continue; d.alive = true; d.y = -10 - Math.random() * 520; d.x = Math.random() * 1100 - 100; d.l.style.display = ''; }
+      d.y += d.v * 60 * dt; d.x += slant * 18 * dt;
+      if (d.y > 520) { if (!env.rain) { d.alive = false; d.l.style.display = 'none'; continue; } d.y = -10; d.x = Math.random() * 1100 - 100; }
+      d.l.setAttribute('x1', d.x); d.l.setAttribute('y1', d.y); d.l.setAttribute('x2', d.x - slant * 1.2); d.l.setAttribute('y2', d.y - 12);
+    }
+    const wo = Math.min(0.8, env.wind / 15);
+    for (const st of streaks) {
+      st.x += (env.wind * 18 + 20) * dt;
+      if (st.x > 1050) { st.x = -st.len; st.y = 30 + Math.random() * 260; }
+      st.l.setAttribute('x1', st.x); st.l.setAttribute('y1', st.y); st.l.setAttribute('x2', st.x + st.len); st.l.setAttribute('y2', st.y);
+      st.l.setAttribute('opacity', wo);
+    }
+
+    if (now - lastRts > 200) { lastRts = now; RTS.ui(); if (document.querySelector('.p-rules').dataset.t === 'eng' && now - lastEng > 600) { lastEng = now; RTS.eng(); } }
+    if (now - lastUi > 100) {
+      lastUi = now;
+      const on = { win: pos.window > 0.005, vent: pos.vent > 0.005, fan: pos.fan > 0.02, heat: pos.heat > 0.05 };
+      const wm = Math.abs(pos.window - cmd.window) > 0.003, vm = Math.abs(pos.vent - cmd.vent) > 0.003;
+      $('heating').classList.toggle('heating', on.heat);
+      $('fan').classList.toggle('fanOn', on.fan); $('fan').classList.toggle('on', on.fan);
+      $('winL').classList.toggle('active', on.win); $('winR').classList.toggle('active', on.win);
+      $('vent').classList.toggle('active', on.vent);
+      $('motL').classList.toggle('on', wm); $('motR').classList.toggle('on', wm); $('motV').classList.toggle('on', vm);
+      setChip('chipHeat', on.heat, 'ISITMA');
+      setChip('chipFan', on.fan, 'FAN');
+      const cOn = pos.circ > 0.02; $('circFan').classList.toggle('on', cOn); setChip('chipCirc', cOn, 'SİRK. FAN');
+      setChip('chipWin', on.win || wm, 'PENCERE', pct(pos.window) + moving(pos.window, cmd.window));
+      setChip('chipVent', on.vent || vm, 'TAVAN', pct(pos.vent) + moving(pos.vent, cmd.vent));
+      setStatus('stWin', on.win, on.win ? pct(pos.window) + moving(pos.window, cmd.window) : 'KAPALI');
+      setStatus('stVent', on.vent, on.vent ? pct(pos.vent) + moving(pos.vent, cmd.vent) : 'KAPALI');
+      setStatus('stFan', on.fan, on.fan ? 'AÇIK' : 'KAPALI');
+      setStatus('stCirc', pos.circ > 0.02, pos.circ > 0.02 ? 'AÇIK' : 'KAPALI');
+      setStatus('stHeat', on.heat, on.heat ? (cmd.heater && !(RTS.on && (RTS.isAct('kazan') || RTS.isAct('elektrik'))) ? 'AÇIK' : 'SOĞUYOR') : 'KAPALI');
+      const off = RTS.on && RTS.isAct('elektrik');
+      $('plcLine1').textContent = off ? 'PLC-01  OFF' : 'PLC-01  RUN'; $('plcMode').textContent = off ? 'ENERJİ YOK' : 'MOD: AUTO';
+      if (!alarms.size) { $('ledErr').setAttribute('fill', 'var(--equipDark)'); $('ledErr').setAttribute('opacity', 0.45); }
+      setStatus('stRain', env.rain, env.rain ? 'VAR' : 'YOK');
+      setStatus('stWind', !!L.wind, f1(env.wind) + ' m/s');
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------------- Kural düzenleyici ---------------- */
+  const ruleEls = {};
+  function buildRules() {
+    const ul = $('ruleList');
+    ul.innerHTML = '<li class="rh"><span></span><span></span><span>Kural</span><span title="Devreye girme eşiği">Gir</span><span title="Devreden çıkma eşiği">Çık</span><span>Açık %</span></li>';
+    for (const [k, name, , unit, hasP, note, desc] of RULES) {
+      const li = document.createElement('li'); li.dataset.r = k; li.title = desc || '';
+      li.dataset.g = k.startsWith('al_') ? 'c' : ['heat', 'vent1', 'vent2', 'win', 'fan', 'humV', 'humF'].includes(k) ? 'a' : 'b';
+      if (k === 'al_tHigh') { const sep = document.createElement('li'); sep.className = 'rh rsep'; sep.dataset.g = 'c'; sep.innerHTML = '<span></span><span></span><span title="Mutlak eşik değerleri">Alarmlar</span><span>Gir</span><span>Çık</span><span></span>'; ul.append(sep); }
+      const step = unit === '°C' ? 0.1 : unit === 'm/s' || unit === 'g/m³' ? 0.5 : 1;
+      let h = `<input type="checkbox" class="ron" aria-label="${name} etkin" ${RU[k].on ? 'checked' : ''}><i></i><span class="rn">${name}${unit ? ` <small>${unit}</small>` : ''}</span>`;
+      if ('a' in RU[k]) h += `<input type="number" data-f="a" step="${step}" value="${RU[k].a}" aria-label="${name} devreye girme"><input type="number" data-f="b" step="${step}" value="${RU[k].b}" aria-label="${name} devreden çıkma">`;
+      else h += `<em class="rnote">${note}</em>`;
+      h += hasP ? `<span class="pc"><input type="number" data-f="p" step="5" value="${RU[k].p}" aria-label="${name} açıklık %"></span>` : '<span></span>';
+      li.innerHTML = h;
+      li.querySelector('.ron').addEventListener('input', (e) => { RU[k].on = e.target.checked; render(); });
+      li.querySelectorAll('input[data-f]').forEach((inp) => inp.addEventListener('input', () => {
+        const v = parseFloat(inp.value); if (isFinite(v)) { RU[k][inp.dataset.f] = inp.dataset.f === 'p' ? Math.max(0, Math.min(100, v)) : v; render(); }
+      }));
+      ul.append(li); ruleEls[k] = li;
+    }
+  }
+  /* ---- Kuralları dışa / içe aktarma ---- */
+  function exportRules() {
+    const data = {
+      tur: 'sera-kurallari', surum: 1, tarih: new Date().toISOString(),
+      hedef: { T: target.T, H: target.H, kaynak: target.src },
+      kurallar: Object.fromEntries(Object.keys(RDEF).map((k) => [k, { ...RU[k] }])),
+      parametreler: RTS.getParams(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); const d = new Date(), ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    a.download = `sera-kurallari-${ds}.json`;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Kurallar dosyaya kaydedildi');
+  }
+  function importRules(data) {
+    if (!data || data.tur !== 'sera-kurallari' || typeof data.kurallar !== 'object') throw new Error('Bu dosya sera kuralları dosyası değil');
+    let n = 0;
+    for (const k of Object.keys(RDEF)) {
+      const src = data.kurallar[k]; if (!src || typeof src !== 'object') continue;
+      if (typeof src.on === 'boolean') RU[k].on = src.on;
+      for (const f of ['a', 'b', 'p']) if (f in RDEF[k] && isFinite(+src[f])) RU[k][f] = f === 'p' ? Math.max(0, Math.min(100, +src[f])) : +src[f];
+      n++;
+    }
+    if (data.hedef) {
+      if (isFinite(+data.hedef.T)) $('pTset').value = +data.hedef.T;
+      if (isFinite(+data.hedef.H)) $('pHset').value = +data.hedef.H;
+      if (['AVG', 'S1', 'S2', 'S3'].includes(data.hedef.kaynak)) $('pSrc').value = data.hedef.kaynak;
+    }
+    if (data.parametreler) RTS.setParams(data.parametreler);
+    for (const k in L) delete L[k];
+    buildRules(); bind();
+    toast(`${n} kural geri yüklendi`);
+  }
+  let toastT = 0;
+  function toast(msg, bad) { const e = $('toast'); e.textContent = msg; e.classList.toggle('bad', !!bad); e.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { e.hidden = true; }, 2600); }
+  $('ruleExport').addEventListener('click', exportRules);
+  $('ruleImport').addEventListener('click', () => $('ruleFile').click());
+  $('ruleFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try { importRules(JSON.parse(await f.text())); } catch (err) { toast('Yüklenemedi: ' + err.message, true); }
+  });
+
+  $('ruleReset').addEventListener('click', () => { Object.assign(RU, JSON.parse(JSON.stringify(RDEF))); for (const k in L) delete L[k]; buildRules(); render(); });
+  buildRules();
+  $('alarmBox').addEventListener('click', (e) => { if (e.target.id === 'almAck') { for (const k of alarms.keys()) ackd.add(k); if (RTS.on) RTS.log('Alarmlar onaylandı', 'info'); renderAlarms(); } });
+  document.querySelectorAll('#rgrp button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('#rgrp button').forEach((x) => x.classList.toggle('on', x === b));
+    $('ruleList').dataset.show = b.dataset.g;
+  }));
+
+  /* ---------------- Girişler ---------------- */
+  const sl = (k, f, min, max, step) =>
+    `<div class="sl"><span>${f === 't' ? 'Sıc.' : 'Nem'}</span><input id="${k}${f}" data-k="${k}" data-f="${f}" type="range" min="${min}" max="${max}" step="${step}" value="${sens[k][f]}" aria-label="${k} ${f === 't' ? 'sıcaklık' : 'nem'}"><output id="o${k}${f}"></output></div>`;
+  const block = (k) => `<div class="sens"><b>${sens[k].name}</b><div class="gauges"><div class="gz">${gaugeSvg(k + 't', -10, 45)}<small>°C</small></div><div class="gz">${gaugeSvg(k + 'h', 0, 100)}<small>%RH</small></div></div>${sl(k, 't', -10, 45, 0.1)}${sl(k, 'h', 0, 100, 1)}</div>`;
+  $('sensIn').innerHTML = ['S1', 'S2', 'S3'].map(block).join('');
+  $('sensOut').innerHTML = block('S4');
+  $('gExt').innerHTML = `<div class="gz">${gaugeSvg('wind', 0, 25)}<small>m/s</small></div><div class="gz">${gaugeSvg('solar', 0, 1100)}<small>W/m²</small></div>`;
+
+  function bind() {
+    if (!RTS.on) document.querySelectorAll('input[data-k]').forEach((i) => {
+      sens[i.dataset.k][i.dataset.f] = +i.value;
+      $('o' + i.dataset.k + i.dataset.f).textContent = i.dataset.f === 't' ? f1(+i.value) + '°C' : '%' + i.value;
+    });
+    target.T = +$('pTset').value || 0; target.H = +$('pHset').value || 0; target.src = $('pSrc').value;
+    if (!RTS.on) { env.wind = +$('pWind').value; env.rain = $('pRain').checked; env.solar = +$('pSolar').value; }
+    $('oSolar').textContent = Math.round(env.solar) + 'W';
+    $('oWind').textContent = f1(env.wind) + 'm/s';
+    $('wires').style.display = $('iWires').checked ? '' : 'none';
+    render();
+  }
+  document.querySelectorAll('.p-ctl input, .p-ctl select').forEach((i) => i.addEventListener('input', bind));
+
+  // Dar ekran sekmeleri
+  document.querySelectorAll('.mtabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.mtabs button').forEach((x) => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.dock').forEach((p) => p.classList.toggle('on', p.classList.contains(b.dataset.p)));
+    if (b.dataset.g) document.querySelector('.p-ctl').dataset.g = b.dataset.g;
+    if (b.dataset.t) { document.querySelector('.p-rules').dataset.t = b.dataset.t; if (b.dataset.t === 'eng') RTS.eng(); }
+  }));
+
+  /* =====================================================================
+     GERÇEK ZAMANLI SİMÜLASYON (RTS)
+     Senaryoya göre dış ortam değişir; sera içi enerji ve nem dengesiyle hesaplanır.
+     Kontrol kuralları aynen çalışır; röle koruma ve motor bekleme süresi uygulanır.
+     ===================================================================== */
+  const RTS = (() => {
+    // ---- Psikrometri ----
+    const psat = (T) => 6.112 * Math.exp((17.62 * T) / (243.12 + T));                 // hPa
+    const absHum = (T, RH) => (216.7 * (RH / 100) * psat(T)) / (273.15 + T);         // g/m³
+    const relHum = (T, AH) => Math.min(100, ((AH * (273.15 + T)) / (216.7 * psat(T))) * 100);
+    const rhFromDew = (T, Td) => Math.min(100, (psat(Td) / psat(T)) * 100);
+    const LAMBDA = 2.45e6, RHOCP = 1.2 * 1005;
+
+    // ---- Örtü tipleri: [ad, U (W/m²K), ışık geçirgenliği %] ----
+    const COVERS = {
+      pe2: ['Çift kat PE (şişirmeli)', 4.0, 75],
+      pe1: ['Tek kat PE film', 6.8, 85],
+      pc:  ['Polikarbonat (çift cidar)', 3.5, 78],
+      cam: ['Tek kat cam', 6.0, 85],
+    };
+
+    // ---- Parametreler ----
+    const PDEF = {
+      W: 10, L: 30, Hw: 3, Hr: 4.5, cover: 'pe2',
+      fanN: 4, fanQ: 12000, fanP: 0.75, circN: 6, circP: 0.15,
+      ventA: 30, winA: 60, ventT: 120, winT: 90, motorWait: 180,
+      heatKW: 60, heatEff: 90, heatTau: 8,
+      mass: 30, sensible: 45, latent: 35, leak: 0.6, relay: 120,
+    };
+    const P = { ...PDEF };
+
+    // ---- Mevsim ve hava durumu ----
+    // Mevsim: gün doğumu/batımı. İklim: mevsime göre [en düşük °C, en yüksek °C, çiğ noktası °C, öğlen güneşi W/m²]
+    const SEASONS = {
+      yaz:      { name: 'Yaz', rise: 5.5, set: 20 },
+      ilkbahar: { name: 'İlkbahar', rise: 6.5, set: 19.5 },
+      sonbahar: { name: 'Sonbahar', rise: 7, set: 18 },
+      kis:      { name: 'Kış', rise: 8, set: 16.5 },
+    };
+    const CLIMATES = {
+      akdeniz:  { name: 'Akdeniz', yaz: [23, 34, 19, 950], ilkbahar: [12, 22, 10, 800], sonbahar: [15, 26, 14, 700], kis: [6, 15, 6, 500] },
+      karadeniz:{ name: 'Karadeniz', yaz: [19, 27, 19, 800], ilkbahar: [9, 16, 9, 650], sonbahar: [12, 20, 12, 550], kis: [4, 10, 2, 380] },
+      marmara:  { name: 'Marmara (geçiş)', yaz: [19, 29, 16, 900], ilkbahar: [8, 18, 8, 780], sonbahar: [12, 21, 12, 620], kis: [3, 9, 2, 400] },
+      karasal:  { name: 'İç Anadolu (karasal)', yaz: [15, 31, 7, 980], ilkbahar: [4, 18, 2, 850], sonbahar: [6, 20, 4, 700], kis: [-5, 5, -7, 450] },
+      dogu:     { name: 'Doğu Anadolu (sert karasal)', yaz: [10, 27, 6, 1000], ilkbahar: [-2, 12, -4, 850], sonbahar: [0, 15, -2, 700], kis: [-18, -4, -20, 450] },
+      gdogu:    { name: 'Güneydoğu (sıcak-kurak)', yaz: [25, 40, 8, 1000], ilkbahar: [10, 23, 6, 850], sonbahar: [13, 28, 8, 750], kis: [3, 12, 2, 500] },
+    };
+    const seasonParams = () => { const c = CLIMATES[st.climate][st.season], z = SEASONS[st.season]; return { name: z.name, Tmin: c[0], Tmax: c[1], dew: c[2], peak: c[3], rise: z.rise, set: z.set }; };
+    const WEATHER = {
+      gunesli: { name: 'Güneşli', sun: 1, amp: 1, dDew: 0, u: 2.5 },
+      parcali: { name: 'Parçalı bulutlu', sun: 0.75, amp: 0.85, dDew: 1, u: 3.5, flick: true },
+      kapali:  { name: 'Kapalı', sun: 0.3, amp: 0.5, dDew: 3, u: 3 },
+      yagmur:  { name: 'Yağmurlu', sun: 0.15, amp: 0.4, dDew: 5, u: 6, rain: true },
+      firtina: { name: 'Fırtınalı', sun: 0.15, amp: 0.4, dDew: 5, u: 12, rain: true, gust: true },
+      sisli:   { name: 'Sisli sabah', sun: 0.8, amp: 0.7, dDew: 4, u: 0.8, fog: true },
+    };
+
+    // ---- Olaylar: [anahtar, ad, süre (dk, 0 = elle bitirilene kadar), açıklama] ----
+    const EVT = [
+      ['sulama', 'Sulama yapıldı', 90, 'Islak topraktan buharlaşma: nem hızla yükselir, hava biraz serinler'],
+      ['sisleme', 'Elle sisleme', 20, 'Su sisi buharlaşır: güçlü serinleme, nem yükselir'],
+      ['bulut', 'Bulut geçişi', 25, 'Güneş ışınımı %75 düşer'],
+      ['bora', 'Ani rüzgar', 15, 'Rüzgar 17 m/s olur, açıklıklar kapanır'],
+      ['kapi', 'Kapı açık kaldı', 0, 'Hava kaçağı saatte 6 hacim artar'],
+      ['ortu', 'Örtü yırtıldı', 0, 'Isı kaybı %30 artar, hava kaçağı saatte 3 hacim artar'],
+      ['elektrik', 'Elektrik kesintisi', 30, 'Tüm ekipman durur, motorlar olduğu yerde kalır'],
+      ['kazan', 'Kazan arızası', 0, 'Isıtma komutu gelse de ısı üretilmez'],
+      ['fanariza', 'Egzoz fanı arızası', 0, 'Egzoz fanlarının yarısı çalışmaz'],
+      ['motor', 'Pencere motoru sıkıştı', 0, 'Pencereler olduğu konumda kalır'],
+      ['sensor', 'S2 sensörü dondu', 0, 'S2 son okuduğu değerde takılı kalır, kontrol yanlış veriyle çalışır'],
+      ['hasat', 'Hasat / yaprak alma', 0, 'Bitki terlemesi %30 azalır'],
+      ['don', 'Zirai don (ayaz)', 360, 'Açık ve rüzgarsız gece: dış sıcaklık 40 dk içinde −3 °C\'ye iner (hava zaten soğuksa 3 °C daha aşağı), gökyüzüne ışınımla örtü kaybı %35 artar. 6 saat sürer. Yalnızca kış ve ilkbaharda.'],
+    ];
+    const EVN = Object.fromEntries(EVT.map((e) => [e[0], e]));
+
+    // ---- Durum ----
+    const st = { on: false, paused: false, speed: 60, climate: 'akdeniz', season: 'yaz', weather: 'gunesli', start: 6, t: 0, Ti: 20, AH: 12, strat: 0, ctlAcc: 0,
+      eHeat: 0, eFan: 0, noise: { S1: 0, S2: 0, S3: 0 }, out: { T: 15, RH: 60, I: 0, u: 2, rain: false }, flux: {},
+      act: {}, rand: false, irrig: true, lastHour: -1, log: [], logDirty: true, chg: {} };
+    const ap = { heater: false, fan: false, circ: false, vent: 0, window: 0, t: {} };
+    const isAct = (k) => !!st.act[k];
+
+    function geom() {
+      const hr = Math.max(0, P.Hr - P.Hw), Af = P.W * P.L;
+      const V = Af * P.Hw + 0.5 * P.W * hr * P.L;
+      const Ac = 2 * P.L * P.Hw + 2 * P.W * P.Hw + P.W * hr + 2 * P.L * Math.hypot(P.W / 2, hr);
+      return { Af, V, Ac, hMid: P.Hw + hr / 2 };
+    }
+    const simH = () => st.start + st.t / 3600;
+    const hourOf = () => simH() % 24;
+    const fmtH = (h) => { h = ((h % 24) + 24) % 24; return String(Math.floor(h)).padStart(2, '0') + ':' + String(Math.floor((h % 1) * 60)).padStart(2, '0'); };
+    const stamp = () => `G${Math.floor(simH() / 24) + 1} ${fmtH(hourOf())}`;
+    function log(txt, cls = '') { if (FC) return; st.log.unshift({ ts: stamp(), txt, cls }); if (st.log.length > 120) st.log.pop(); st.logDirty = true; }
+
+    // ---- Dış ortam üreteci ----
+    function outdoor(h, tH) {
+      const s = seasonParams(), w = WEATHER[st.weather];
+      const mid = (s.Tmin + s.Tmax) / 2, amp = ((s.Tmax - s.Tmin) / 2) * w.amp;
+      const rain = !!w.rain && (w.gust || Math.sin(tH * 1.1) > -0.4);          // yağmurlu havada aralıklı yağış
+      let T = mid + amp * Math.cos((2 * Math.PI * (h - 15)) / 24) - (rain ? 1.5 : 0);
+      let I = s.peak * Math.max(0, Math.sin((Math.PI * (h - s.rise)) / (s.set - s.rise))) * w.sun;
+      if (w.flick) I *= 0.5 + 0.5 * Math.abs(Math.sin(tH * 2.7) * Math.cos(tH * 1.3));
+      let RH = rain ? 96 : rhFromDew(T, Math.min(T - 0.3, s.dew + w.dDew));
+      if (w.fog && h >= 3 && h < 10.5) { RH = 99; I *= 0.3; }
+      let u = w.u * (1 + 0.25 * Math.sin(tH * 6.1) * Math.sin(tH * 2.3));
+      if (w.gust) u += 5 * Math.max(0, Math.sin(tH * 3.7));
+      if (isAct('don')) {   // radyasyon donu: soğuk hava çöker, rüzgar diner, hava doygunluğa yaklaşır
+        // Sıcaklık 40 dk içinde don sıcaklığına iner: −3 °C, hava zaten soğuksa 3 °C daha aşağı
+        const k = Math.min(1, (st.t - st.act.don.t0) / 2400), Tf = Math.min(T - 3, -3);
+        T += (Tf - T) * k; u = Math.min(u, 1); RH = rhFromDew(T, T - 0.5);
+      }
+      if (isAct('bulut')) I *= 0.25;
+      if (isAct('bora')) u = 17;
+      return { T, RH, I, u: Math.max(0, u), rain };
+    }
+
+    function reset() {
+      st.t = 0; st.chg = {}; st.ctlAcc = 5; st.eHeat = 0; st.eFan = 0; st.strat = 0; st.act = {}; st.log = []; st.logDirty = true; st.lastHour = Math.floor(simH());
+      st.out = outdoor(st.start % 24, st.start);
+      // Başlangıç: önceden işletilen bir sera (soğuk havada hedefin biraz altında, sıcak havada dışarıdan biraz sıcak)
+      st.Ti = Math.max(st.out.T + 2, Math.min(target.T - 2, st.out.T + 15)); st.AH = absHum(st.Ti, 75);
+      Object.assign(ap, { heater: false, fan: false, circ: false, vent: 0, window: 0, t: {} });
+      if (st.on) {
+        Object.assign(pos, { window: 0, vent: 0, fan: 0, heat: 0, circ: 0 });
+        Object.assign(cmd, { window: 0, vent: 0, fan: false, heater: false, circ: false });
+        for (const k in L) delete L[k]; writeSensors(); log(`Simülasyon başladı · ${CLIMATES[st.climate].name} iklimi, ${SEASONS[st.season].name.toLowerCase()}, ${WEATHER[st.weather].name.toLowerCase()}`, 'info'); }
+    }
+
+    // ---- Olay yönetimi ----
+    function startEvt(k, mins) {
+      const e = EVN[k], d = mins ?? e[2];
+      st.act[k] = { t0: st.t, t1: d > 0 ? st.t + d * 60 : null };
+      if (k === 'sensor') st.act[k].frozen = { t: sens.S2.t, h: sens.S2.h };
+      log(`OLAY: ${e[1]} — ${e[3]}`, 'evt');
+    }
+    function endEvt(k, why = 'sona erdi') { if (!st.act[k]) return; delete st.act[k]; log(`${EVN[k][1]} ${why}`, 'info'); }
+    function hourly() {
+      const h = Math.floor(hourOf());
+      if (st.irrig && (h === 8 || h === 14)) startEvt('sulama');
+      if (st.rand && Math.random() < 0.15) {
+        const pool = [['bulut', 25], ['bora', 15], ['kapi', 40], ['elektrik', 20], ['fanariza', 120], ['sensor', 60], ['kazan', 90], ['sisleme', 20]];
+        if (['kis', 'ilkbahar'].includes(st.season) && (h >= 20 || h < 5)) pool.push(['don', 360], ['don', 360]);
+        const [k, d] = pool[Math.floor(Math.random() * pool.length)];
+        if (!st.act[k] && !(k === 'bulut' && st.out.I < 100)) startEvt(k, d);
+      }
+    }
+
+    // ---- Fizik adımı (dt saniye) ----
+    function physics(dt) {
+      const o = (st.out = fcOut || outdoor(hourOf(), simH()));
+      const g = geom(), cov = COVERS[P.cover], U = cov[1] * (isAct('ortu') ? 1.3 : 1) * (isAct('don') ? 1.35 : 1), tr = cov[2] / 100;
+      const power = !isAct('elektrik');
+
+      // Aktüatörler
+      const mv = (cur, tgt, T) => { const d = dt / T; return cur < tgt ? Math.min(tgt, cur + d) : Math.max(tgt, cur - d); };
+      if (power) {
+        pos.vent = mv(pos.vent, cmd.vent, P.ventT);
+        if (!isAct('motor')) pos.window = mv(pos.window, cmd.window, P.winT);
+      }
+      pos.fan = mv(pos.fan, power && cmd.fan ? 1 : 0, 10);
+      pos.circ = mv(pos.circ, power && cmd.circ ? 1 : 0, 8);
+      const heatOn = power && cmd.heater && !isAct('kazan');
+      pos.heat += ((heatOn ? 1 : 0) - pos.heat) * (1 - Math.exp(-dt / (P.heatTau * 60)));
+
+      // Hava debileri (m³/s)
+      const Ti = st.Ti, dTio = Ti - o.T;
+      const stack = (2 * 9.81 * g.hMid * Math.max(0, dTio)) / (Ti + 273.15);
+      const Qv = ((0.6 * P.ventA * pos.vent) / 2) * Math.sqrt(0.1 * o.u * o.u + stack);
+      const Qw = ((0.6 * P.winA * pos.window) / 2) * Math.sqrt(0.25 * o.u * o.u + 0.5 * stack);
+      const fanEff = isAct('fanariza') ? Math.floor(P.fanN / 2) : P.fanN;
+      const Qf = (pos.fan * fanEff * P.fanQ) / 3600;
+      const leak = P.leak + (isAct('kapi') ? 6 : 0) + (isAct('ortu') ? 3 : 0);
+      const Ql = ((leak * g.V) / 3600) * (1 + 0.1 * o.u);
+      const Q = Qv + Qw + Qf + Ql;
+
+      // Ek nem kaynakları (olaylar)
+      let Ex = 0, coolX = 0;
+      if (isAct('sulama')) { const e = (30 / 3600) * Math.exp(-(st.t - st.act.sulama.t0) / 2400); Ex += e; coolX += e * LAMBDA * 0.4; }
+      if (isAct('sisleme')) { const e = 60 / 3600; Ex += e; coolX += e * LAMBDA * 0.8; }
+
+      // Enerji dengesi (W)
+      const C = RHOCP * g.V + P.mass * 1000 * g.Af;
+      const Isun = tr * o.I * g.Af;
+      const Qsol = (P.sensible / 100) * Isun;
+      const Qh = pos.heat * P.heatKW * 1000 * (P.heatEff / 100);
+      const Qcov = U * g.Ac * dTio;
+      const Qvent = RHOCP * Q * dTio;
+      const Tc = Ti - (U * dTio) / 7.5, AHc = absHum(Tc, 100);
+      const cond = st.AH > AHc ? (0.004 * g.Ac * (st.AH - AHc)) / 1000 : 0;
+      st.Ti += ((Qsol + Qh + 0.5 * cond * LAMBDA - Qcov - Qvent - coolX) * dt) / C;
+
+      // Nem dengesi (g/m³)
+      const tf = isAct('hasat') ? 0.7 : 1;
+      const E = tf * (((P.latent / 100) * Isun) / LAMBDA + ((15 + 15 * pos.heat) / 3.6e6) * g.Af) + Ex;
+      const rainIn = o.rain ? 0.0008 * (pos.vent * P.ventA + 0.5 * pos.window * P.winA) : 0;
+      const AHo = absHum(o.T, o.RH);
+      st.AH += (((E + rainIn - cond) * 1000) / g.V - (Q / g.V) * (st.AH - AHo)) * dt;
+      st.AH = Math.max(0.5, Math.min(st.AH, absHum(st.Ti, 100)));
+
+      const stratT = (0.0022 * o.I * tr + 0.4 * pos.heat) * (1 - 0.65 * pos.circ) * (1 - 0.4 * Math.max(pos.vent, pos.window));
+      st.strat += (stratT - st.strat) * (1 - Math.exp(-dt / 300));
+
+      st.eHeat += ((Qh / (P.heatEff / 100)) * dt) / 3.6e6;
+      st.eFan += ((pos.fan * fanEff * P.fanP + pos.circ * P.circN * P.circP) * dt) / 3600;
+      st.flux = { Q, ach: (Q * 3600) / g.V, Qsol, Qh, Qcov, Qvent, E, cond };
+    }
+
+    function writeSensors() {
+      const o = st.out;
+      for (const k of ['S1', 'S2', 'S3']) st.noise[k] = Math.max(-0.15, Math.min(0.15, st.noise[k] + (Math.random() - 0.5) * 0.04));
+      const T = { S1: st.Ti - 0.5 * st.strat + 0.4 * pos.heat, S2: st.Ti + st.strat, S3: st.Ti + 0.15 * st.strat };
+      for (const k in T) {
+        if (k === 'S2' && isAct('sensor')) { sens.S2.t = st.act.sensor.frozen.t; sens.S2.h = st.act.sensor.frozen.h; }
+        else { const t = T[k] + st.noise[k]; sens[k].t = Math.round(t * 10) / 10; sens[k].h = Math.round(relHum(t, st.AH)); }
+        // Değer değişimi takibi (donmuş sensör tespiti)
+        const c = st.chg[k] || (st.chg[k] = { v: null, t: st.t });
+        const v = sens[k].t + '/' + sens[k].h; if (v !== c.v) { c.v = v; c.t = st.t; }
+      }
+      sens.S4.t = Math.round(o.T * 10) / 10; sens.S4.h = Math.round(o.RH);
+      env.wind = Math.round(o.u * 10) / 10; env.rain = o.rain; env.solar = Math.round(o.I);
+    }
+
+    // ---- Röle koruma, motor bekleme ve olay etkileri ----
+    const WHY = { heater: 'heat', fan: 'fan', circ: 'circ', vent: 'vent', window: 'win' };
+    const NM = { heater: 'Isıtma', fan: 'Egzoz fanı', circ: 'Sirk. fanı', vent: 'Tavan', window: 'Pencereler' };
+    function guard(why) {
+      if (!st.on && !FC) return;   // tahmin sırasında da röle koruma uygulanır
+      if (isAct('elektrik')) {
+        cmd.heater = cmd.fan = cmd.circ = false; cmd.vent = pos.vent; cmd.window = pos.window;
+        for (const k in WHY) why[WHY[k]] = 'Elektrik kesintisi — ekipman durdu';
+        return;
+      }
+      if (isAct('motor')) { cmd.window = pos.window; why.win += ' · motor sıkıştı'; }
+      const now = st.t;
+      for (const k of ['heater', 'fan', 'circ']) {
+        if (cmd[k] === ap[k]) continue;
+        const left = P.relay - (now - (ap.t[k] ?? -1e9));
+        if (left > 0) { cmd[k] = ap[k]; why[WHY[k]] += ` · röle koruma ${Math.ceil(left)} sn`; }
+        else { ap[k] = cmd[k]; ap.t[k] = now; log(`${NM[k]} ${cmd[k] ? 'AÇILDI' : 'KAPANDI'} · ${why[WHY[k]]}`, cmd[k] ? 'on' : 'off'); }
+      }
+      for (const k of ['vent', 'window']) {
+        if (Math.abs(cmd[k] - ap[k]) < 0.001) continue;
+        const safety = cmd[k] < ap[k] && ((RU.rain.on && env.rain) || L.wind);
+        const left = P.motorWait - (now - (ap.t[k] ?? -1e9));
+        if (left > 0 && !safety) { cmd[k] = ap[k]; why[WHY[k]] += ` · motor bekleme ${Math.ceil(left)} sn`; }
+        else { log(`${NM[k]} %${Math.round(ap[k] * 100)} → %${Math.round(cmd[k] * 100)} · ${why[WHY[k]]}`, cmd[k] > ap[k] ? 'on' : 'off'); ap[k] = cmd[k]; ap.t[k] = now; }
+      }
+      if (isAct('kazan') && cmd.heater) why.heat += ' · kazan arızalı, ısı yok';
+      if (isAct('fanariza') && cmd.fan) why.fan += ' · fanların yarısı arızalı';
+    }
+
+    // ---- Zaman ilerletme ----
+    let lastC = null;
+    function advance(dtReal) {
+      if (!st.on || st.paused) return;
+      let rem = dtReal * st.speed;
+      while (rem > 1e-9) {
+        const h = Math.min(2, rem);
+        physics(h); st.t += h; st.ctlAcc += h; rem -= h;
+        for (const k in st.act) if (st.act[k].t1 != null && st.t >= st.act[k].t1) endEvt(k);
+        const hr = Math.floor(simH());
+        if (hr !== st.lastHour) { st.lastHour = hr; hourly(); }
+        if (st.ctlAcc >= 5) { st.ctlAcc = 0; writeSensors(); lastC = control(); guard(why); }
+      }
+    }
+
+    // ---- Arayüz ----
+    const kw = (w) => (w / 1000).toFixed(1);
+    // Düğmeler bir kez oluşturulur; her güncellemede yalnızca durumları değişir
+    // (her seferinde yeniden çizmek, fare basılıyken düğmeyi sildiği için tıklamaları kaybettiriyordu)
+    $('evGrid').innerHTML = EVT.map(([k, n, , desc]) => `<button type="button" class="evb" data-e="${k}" title="${desc}"><span>${n}</span><em></em></button>`).join('');
+    const evEls = Object.fromEntries([...document.querySelectorAll('#evGrid .evb')].map((b) => [b.dataset.e, b]));
+    function evButtons() {
+      for (const [k, , d] of EVT) {
+        const b = evEls[k], a = st.act[k];
+        const rem = a ? (a.t1 != null ? `${Math.max(1, Math.ceil((a.t1 - st.t) / 60))} dk` : 'bitir') : d ? `${d} dk` : 'sürekli';
+        b.classList.toggle('on', !!a); b.disabled = !st.on || (k === 'don' && !a && !['kis', 'ilkbahar'].includes(st.season));
+        const em = b.querySelector('em'); if (em.textContent !== rem) em.textContent = rem;
+      }
+      $('evHint').hidden = st.on;
+    }
+    function ui() {
+      const g = geom();
+      $('geoInfo').textContent = `Taban ${g.Af.toFixed(0)} m² · Hacim ${g.V.toFixed(0)} m³ · Örtü ${g.Ac.toFixed(0)} m² · U ${COVERS[P.cover][1]} W/m²K`;
+      evButtons();
+      if (!st.on) { $('rtsBadge').hidden = true; $('rtsClock').textContent = '--:--'; $('rtsInfo').textContent = 'Kapalı'; return; }
+      const f = st.flux;
+      $('rtsClock').textContent = stamp();
+      const evs = Object.keys(st.act).map((k) => EVN[k][1]);
+      $('rtsInfo').textContent = st.paused ? 'Duraklatıldı' : `${st.speed}× · ${Math.round(st.out.I)} W/m² · ${f1(st.out.T)} °C`;
+      $('rtsBadge').hidden = false;
+      $('rtsBadge').innerHTML = `<i class="${st.paused ? '' : 'live'}"></i>RTS · ${stamp()} · ${CLIMATES[st.climate].name.split(' (')[0]}, ${SEASONS[st.season].name.toLowerCase()}, ${WEATHER[st.weather].name.toLowerCase()} · ${st.paused ? 'durdu' : st.speed + '×'}${evs.length ? `<b>${evs.join(' · ')}</b>` : ''}`;
+      $('rtsRes').innerHTML = [
+        ['Hava değişimi', `${(f.ach || 0).toFixed(1)} /sa`], ['Havalandırma', `${Math.round((f.Q || 0) * 3600).toLocaleString('tr-TR')} m³/sa`],
+        ['Güneş kazancı', `${kw(f.Qsol || 0)} kW`], ['Isıtma gücü', `${kw(f.Qh || 0)} kW`],
+        ['Örtü ısı kaybı', `${kw(f.Qcov || 0)} kW`], ['Havalandırma kaybı', `${kw(f.Qvent || 0)} kW`],
+        ['Terleme', `${((f.E || 0) * 3600).toFixed(1)} kg/sa`], ['Yoğuşma', `${((f.cond || 0) * 3600).toFixed(1)} kg/sa`],
+        ['Isıtma enerjisi', `${st.eHeat.toFixed(1)} kWh`], ['Fan enerjisi', `${st.eFan.toFixed(1)} kWh`],
+      ].map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('');
+      if (st.logDirty && $('logAcc').open) {
+        st.logDirty = false;
+        const lg = $('rtsLog'), sc = lg.scrollTop;
+        lg.innerHTML = st.log.map((l) => `<li class="${l.cls}"><time>${l.ts}</time><span>${l.txt}</span></li>`).join('') || '<li><span>Henüz kayıt yok.</span></li>';
+        lg.scrollTop = sc;
+      }
+      for (const k of ['S1', 'S2', 'S3', 'S4']) for (const fld of ['t', 'h']) {
+        $(k + fld).value = sens[k][fld]; $('o' + k + fld).textContent = fld === 't' ? f1(sens[k].t) + '°C' : '%' + sens[k].h;
+      }
+      $('pWind').value = env.wind; $('oWind').textContent = f1(env.wind) + 'm/s'; $('pRain').checked = env.rain;
+      $('pSolar').value = env.solar; $('oSolar').textContent = Math.round(env.solar) + 'W';
+      if (lastC) renderDom(lastC);
+    }
+
+    function setOn(on) {
+      st.on = on;
+      document.querySelectorAll('input[data-k], #pWind, #pRain, #pSolar').forEach((i) => { i.disabled = on; });
+      document.body.classList.toggle('rts', on);
+      if (on) { reset(); st.paused = false; lastC = control(); guard(why); }
+      else { $('rtsBadge').hidden = true; bind(); }
+      $('rtsPause').textContent = 'II'; ui();
+    }
+
+    /* ---- Gelecek tahmini ----
+       Mevcut durumun kopyası üzerinde fizik modeli + kontrol kuralları ileri doğru çalıştırılır.
+       RTS açıkken dış hava senaryodan bilinir; kapalıyken dış koşulların sabit kalacağı varsayılır.
+       Sonunda tüm durum eski haline döndürülür (gerçek simülasyon etkilenmez). */
+    let fcOut = null;
+    const CMDK = ['heater', 'vent', 'window', 'fan', 'circ'];
+    const CMDN = { heater: 'Isıtma', vent: 'Tavan', window: 'Pencereler', fan: 'Egzoz fanı', circ: 'Sirk. fanı' };
+    function snapshot() {
+      return JSON.stringify({
+        st: { Ti: st.Ti, AH: st.AH, strat: st.strat, t: st.t, ctlAcc: st.ctlAcc, eHeat: st.eHeat, eFan: st.eFan, noise: st.noise, out: st.out, flux: st.flux, act: st.act, lastHour: st.lastHour, chg: st.chg, rand: st.rand },
+        pos, cmd, sens, env, L, ap, why, active,
+      });
+    }
+    function restore(js) {
+      const o = JSON.parse(js);
+      Object.assign(st, o.st); Object.assign(pos, o.pos); Object.assign(cmd, o.cmd); Object.assign(env, o.env);
+      for (const k in o.sens) Object.assign(sens[k], o.sens[k]);
+      for (const k in L) delete L[k]; Object.assign(L, o.L);
+      Object.assign(ap, o.ap); Object.assign(why, o.why);
+      for (const k in active) delete active[k]; Object.assign(active, o.active);
+    }
+    function forecast(hours) {
+      const js = snapshot(), live = st.on;
+      FC = true;
+      try {
+        const avg = () => { const t = (sens.S1.t + sens.S2.t + sens.S3.t) / 3, h = (sens.S1.h + sens.S2.h + sens.S3.h) / 3; return { t, h, max: Math.max(sens.S1.t, sens.S2.t, sens.S3.t), min: Math.min(sens.S1.t, sens.S2.t, sens.S3.t) }; };
+        if (!live) {
+          const a = avg();
+          st.Ti = a.t; st.AH = absHum(a.t, a.h); st.strat = 0; st.t = 0; st.act = {}; st.chg = {};
+          fcOut = { T: sens.S4.t, RH: sens.S4.h, I: env.solar || 0, u: env.wind, rain: env.rain };
+          Object.assign(ap, { heater: cmd.heater, fan: cmd.fan, circ: cmd.circ, vent: cmd.vent, window: cmd.window, t: {} });
+        }
+        st.rand = false;
+        const t0 = st.t, end = t0 + hours * 3600, step = 10, pts = [], evs = [], alm = {};
+        let acc = 0, prev = { ...cmd };
+        const eH0 = st.eHeat, eF0 = st.eFan;
+        const push = () => { const a = avg(); pts.push({ t: st.t - t0, T: a.t, H: a.h, max: a.max, min: a.min, heat: pos.heat, vent: pos.vent, win: pos.window, fan: pos.fan }); return a; };
+        push();
+        while (st.t < end) {
+          physics(step); st.t += step; acc += step;
+          for (const k in st.act) if (st.act[k].t1 != null && st.t >= st.act[k].t1) delete st.act[k];
+          const hr = Math.floor(simH()); if (live && hr !== st.lastHour) { st.lastHour = hr; hourly(); }
+          if (acc >= 30) {
+            acc = 0; writeSensors(); control(); guard(why);
+            for (const k of CMDK) if (cmd[k] !== prev[k]) {
+              const v = typeof cmd[k] === 'boolean' ? (cmd[k] ? 'açılır' : 'kapanır') : `%${Math.round(prev[k] * 100)} → %${Math.round(cmd[k] * 100)}`;
+              evs.push({ t: st.t - t0, txt: `${CMDN[k]} ${v}`, why: why[{ heater: 'heat', vent: 'vent', window: 'win', fan: 'fan', circ: 'circ' }[k]] });
+            }
+            prev = { ...cmd };
+            const a = push(), r = RU;
+            const chk = (k, cond, txt) => { if (r[k].on && cond && !alm[k]) alm[k] = { t: st.t - t0, txt }; };
+            chk('al_tHigh', a.max > r.al_tHigh.a, `Aşırı sıcaklık alarmı (${f1(a.max)} °C)`);
+            chk('al_tLow', a.min < r.al_tLow.a, `Düşük sıcaklık alarmı (${f1(a.min)} °C)`);
+            chk('al_hHigh', a.h > r.al_hHigh.a, `Yüksek nem alarmı (%${Math.round(a.h)})`);
+            chk('al_hLow', a.h < r.al_hLow.a, `Düşük nem alarmı (%${Math.round(a.h)})`);
+          }
+        }
+        return { pts, evs, alm: Object.values(alm), eHeat: st.eHeat - eH0, eFan: st.eFan - eF0, live, t0Abs: live ? simH() - hours : null };
+      } finally { FC = false; fcOut = null; restore(js); }
+    }
+    let fcCache = null, fcAt = 0, fcHours = 3, fcHover = null;
+    function fcTime(r, t) {
+      if (r.live) { const h = r.t0Abs + t / 3600; return fmtH(h); }
+      const m = Math.round(t / 60); return `+${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+    }
+    function fcChart(r, key, lo, hi, unit, W) {
+      const H = 74, m = { l: 26, r: 6, t: 6, b: 14 }, pts = r.pts, T = fcHours * 3600;
+      let mn = Math.min(lo, ...pts.map((p) => p[key])), mx = Math.max(hi, ...pts.map((p) => p[key]));
+      const pad = (mx - mn) * 0.12 || 1; mn -= pad; mx += pad;
+      const X = (t) => m.l + (t / T) * (W - m.l - m.r), Y = (v) => m.t + (1 - (v - mn) / (mx - mn)) * (H - m.t - m.b);
+      let s = `<rect class="fband" x="${m.l}" y="${Y(hi)}" width="${W - m.l - m.r}" height="${Math.max(0, Y(lo) - Y(hi))}"/>`;
+      for (const v of [mn + pad, mx - pad]) s += `<text class="fax" x="${m.l - 3}" y="${Y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`;
+      for (const f of [0, 0.5, 1]) s += `<text class="fax" x="${X(f * T)}" y="${H - 3}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${fcTime(r, f * T)}</text>`;
+      s += `<path class="fline" d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[key]).toFixed(1)).join('')}"/>`;
+      // bant dışı bölümler renkli
+      s += `<path class="fout hi" d="${pts.map((p, i) => (p[key] > hi ? ((i && pts[i - 1][key] > hi) ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[key]).toFixed(1) : '')).join('')}"/>`;
+      s += `<path class="fout lo" d="${pts.map((p, i) => (p[key] < lo ? ((i && pts[i - 1][key] < lo) ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[key]).toFixed(1) : '')).join('')}"/>`;
+      if (fcHover != null && pts[fcHover]) { const p = pts[fcHover]; s += `<line class="fcur" x1="${X(p.t)}" x2="${X(p.t)}" y1="${m.t}" y2="${H - m.b}"/><circle class="fdot" cx="${X(p.t)}" cy="${Y(p[key])}" r="3"/>`; }
+      s += `<text class="fttl" x="${m.l + 3}" y="${m.t + 8}">${unit}</text>`;
+      return `<svg class="fchart" viewBox="0 0 ${W} ${H}" data-ml="${m.l}" data-mr="${m.r}" data-w="${W}">${s}</svg>`;
+    }
+    function fcLanes(r, W) {
+      const m = { l: 26, r: 6 }, T = fcHours * 3600, X = (t) => m.l + (t / T) * (W - m.l - m.r), L4 = [['heat', 'Isıtma', 'var(--heat)'], ['vent', 'Tavan', 'var(--open)'], ['win', 'Pencere', 'var(--open)'], ['fan', 'Egzoz', 'var(--fan)']];
+      let s = '';
+      L4.forEach(([k, n, c], i) => {
+        const y = 2 + i * 9;
+        s += `<rect class="flane" x="${m.l}" y="${y}" width="${W - m.l - m.r}" height="7"/><text class="fax" x="${m.l - 3}" y="${y + 6}" text-anchor="end">${n.slice(0, 3)}</text>`;
+        const p = r.pts;
+        for (let j = 0; j < p.length - 1; j++) if (p[j][k] > 0.05) s += `<rect x="${X(p[j].t).toFixed(1)}" y="${y}" width="${(X(p[j + 1].t) - X(p[j].t) + 0.3).toFixed(1)}" height="7" fill="${c}" opacity="${(0.3 + 0.7 * p[j][k]).toFixed(2)}"/>`;
+      });
+      if (fcHover != null && r.pts[fcHover]) s += `<line class="fcur" x1="${X(r.pts[fcHover].t)}" x2="${X(r.pts[fcHover].t)}" y1="0" y2="38"/>`;
+      return `<svg class="fchart" viewBox="0 0 ${W} 38" data-ml="${m.l}" data-mr="${m.r}" data-w="${W}">${s}</svg>`;
+    }
+    function renderForecast(force) {
+      const box = $('fcCharts'); if (!box) return;
+      const nowMs = performance.now();
+      if (force || !fcCache || nowMs - fcAt > 2000) { fcCache = forecast(fcHours); fcAt = nowMs; }
+      const r = fcCache, W = Math.max(220, box.clientWidth || 300);
+      const tLo = target.T + RU.heat.a, tHi = target.T + RU.vent1.a, hLo = target.H - 10, hHi = target.H + RU.humV.a;
+      box.innerHTML = fcChart(r, 'T', tLo, tHi, 'Sıcaklık °C', W) + fcChart(r, 'H', hLo, hHi, 'Nem %', W) + fcLanes(r, W);
+      // Okuma satırı
+      if (fcHover != null && r.pts[fcHover]) {
+        const p = r.pts[fcHover];
+        $('fcRead').innerHTML = `<b>${fcTime(r, p.t)}</b> · ${f1(p.T)} °C · %${Math.round(p.H)} · tavan %${Math.round(p.vent * 100)} · pencere %${Math.round(p.win * 100)}${p.fan > 0.5 ? ' · egzoz açık' : ''}${p.heat > 0.3 ? ' · ısıtma' : ''}`;
+      } else $('fcRead').textContent = 'Değerleri görmek için grafiğin üzerine gelin.';
+      // Özet maddeler
+      const n1 = (v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      const Ts = r.pts.map((p) => p.T), Hs = r.pts.map((p) => p.H), dt = (fcHours * 3600) / (r.pts.length - 1) / 60;
+      const iMax = Ts.indexOf(Math.max(...Ts)), iMin = Ts.indexOf(Math.min(...Ts));
+      const outT = Math.round(Ts.filter((v) => v < tLo || v > tHi).length * dt), outH = Math.round(Hs.filter((v) => v < hLo || v > hHi).length * dt);
+      const last = r.pts[r.pts.length - 1];
+      const items = [];
+      items.push(`<b>Sıcaklık:</b> ${n1(Math.min(...Ts))} – ${n1(Math.max(...Ts))} °C (en yüksek ${fcTime(r, r.pts[iMax].t)}, en düşük ${fcTime(r, r.pts[iMin].t)}). Normal aralık (${n1(tLo)}–${n1(tHi)} °C) dışında <b>${outT} dk</b>.`);
+      items.push(`<b>Nem:</b> %${Math.round(Math.min(...Hs))} – %${Math.round(Math.max(...Hs))}. Normal aralık (%${Math.round(hLo)}–%${Math.round(hHi)}) dışında <b>${outH} dk</b>.`);
+      items.push(`<b>${fcHours} saat sonra:</b> ${n1(last.T)} °C, %${Math.round(last.H)}.`);
+      if (r.alm.length) items.push(`<b class="crit">Alarm riski:</b> ${r.alm.map((a) => `${fcTime(r, a.t)} ${a.txt}`).join(' · ')}`);
+      else items.push('<b>Alarm riski:</b> beklenmiyor.');
+      const ev = r.evs.slice(0, 6);
+      items.push(`<b>Ekipman:</b> ${ev.length ? ev.map((e) => `<span title="${e.why}">${fcTime(r, e.t)} ${e.txt}</span>`).join(' · ') + (r.evs.length > 6 ? ` · +${r.evs.length - 6} değişiklik` : '') : 'değişiklik beklenmiyor.'}`);
+      items.push(`<b>Enerji:</b> ısıtma ≈ ${n1(r.eHeat)} kWh, fanlar ≈ ${n1(r.eFan)} kWh.`);
+      const html = items.map((x) => `<li>${x}</li>`).join('');
+      const fl = $('fcList'); if (fl.dataset.h !== html) { fl.innerHTML = html; fl.dataset.h = html; }
+      $('fcNote').textContent = r.live ? 'Kontrol kuralları aynen çalışırsa · dış hava senaryodan' : 'Kontrol kuralları aynen çalışırsa · dış koşulların sabit kalacağı varsayıldı';
+    }
+
+    /* ---- Mühendislik tahminleri (Hesaplar sekmesi) ----
+       Girdiler otomatik: iç = S1–S3 ortalaması, dış = S4, güneş = GS-01, rüzgar = WS-01 */
+    function eng() {
+      const g = geom(), cov = COVERS[P.cover], U = cov[1] * (isAct('ortu') ? 1.3 : 1), tr = cov[2] / 100, eta = P.heatEff / 100;
+      const C = RHOCP * g.V + P.mass * 1000 * g.Af;
+      const Tin = (sens.S1.t + sens.S2.t + sens.S3.t) / 3, Hin = (sens.S1.h + sens.S2.h + sens.S3.h) / 3;
+      const To = sens.S4.t, Ho = sens.S4.h, I = env.solar || 0, u = env.wind, Ts = target.T, Hs = target.H;
+      const AHin = absHum(Tin, Hin), AHo = absHum(To, Ho);
+      const leak = P.leak + (isAct('kapi') ? 6 : 0) + (isAct('ortu') ? 3 : 0);
+      const Vl = ((leak * g.V) / 3600) * (1 + 0.1 * u), UA = U * g.Ac, K0 = UA + RHOCP * Vl;
+      const dTio = Math.max(0, Tin - To), stack = (2 * 9.81 * g.hMid * dTio) / (Tin + 273.15);
+      const Qv = ((0.6 * P.ventA) / 2) * Math.sqrt(0.1 * u * u + stack), Qw = ((0.6 * P.winA) / 2) * Math.sqrt(0.25 * u * u + 0.5 * stack);
+      const Qf = (P.fanN * P.fanQ) / 3600;
+      const Qsol = tr * I * g.Af * (P.sensible / 100), QhMax = P.heatKW * 1000 * eta;
+      const Eb = ((P.latent / 100) * tr * I * g.Af) / LAMBDA + (15 / 3.6e6) * g.Af;
+      const n1 = (v, d = 1) => (isFinite(v) ? v.toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—');
+      const dur = (m) => (!isFinite(m) ? '—' : m < 60 ? `${Math.max(1, Math.round(m))} dk` : `${n1(m / 60)} sa`);
+
+      // Bir çalışma modunun 12 saatlik gidişi (dakikalık adım)
+      function predict(Qx, heatOn, sunOn = true) {
+        const Q = Vl + Qx, K = UA + RHOCP * Q, tau = C / K;
+        const Tinf = To + ((sunOn ? Qsol : 0) + (heatOn ? QhMax : 0)) / K;
+        const E = (sunOn ? Eb : (15 / 3.6e6) * g.Af) + (heatOn ? (15 / 3.6e6) * g.Af : 0);
+        const AHinf = AHo + (E * 1000) / Q, tauH = g.V / Q;
+        const up = Tin < Ts, hDown = Hin > Hs;
+        let T1, H1, tT = NaN, tH = NaN;
+        for (let m = 1; m <= 720; m++) {
+          const T = Tinf + (Tin - Tinf) * Math.exp((-m * 60) / tau);
+          const AH = Math.min(AHinf + (AHin - AHinf) * Math.exp((-m * 60) / tauH), absHum(T, 100));
+          const RH = relHum(T, AH);
+          if (m === 60) { T1 = T; H1 = RH; }
+          if (isNaN(tT) && (up ? T >= Ts : T <= Ts)) tT = m;
+          if (isNaN(tH) && (hDown ? RH <= Hs : RH >= Hs)) tH = m;
+        }
+        return { T1, H1, tT, tH, Tinf };
+      }
+
+      // Özet cümleler
+      const S = [];
+      const Tlim = Ts - QhMax / K0;
+      S.push(`<b>Isıtma kapasitesi:</b> Kurulu ${P.heatKW} kW ısıtma ile gece dış sıcaklık <b>${n1(Tlim)} °C</b>'ye düşene kadar ${n1(Ts)} °C korunabilir.`);
+      const Qneed = K0 * (Ts - To) - Qsol;
+      S.push(Qneed > 0
+        ? `<b>Şu anki ısı ihtiyacı:</b> Hedefi korumak için <b>${n1(Qneed / 1000)} kW</b> ısı gerekir (kurulu kapasitenin %${n1((Qneed / QhMax) * 100, 0)}'${Qneed > QhMax ? 'i — YETERSİZ' : 'i'}).`
+        : `<b>Şu anki ısı ihtiyacı:</b> Isıtma gerekmez; güneş ${n1(-Qneed / 1000)} kW fazla ısı getiriyor.`);
+      if (To < Ts - 0.3) {
+        const Vreq = (Qsol - UA * (Ts - To)) / (RHOCP * (Ts - To));
+        S.push(Vreq > 0
+          ? `<b>Güneş yükü:</b> ${n1(Qsol / 1000)} kW. ${n1(Ts)} °C'de kalmak için <b>${Math.round(Vreq * 3600).toLocaleString('tr-TR')} m³/sa</b> havalandırma gerekir: tavan ≈ %${n1(Math.min(100, (Vreq / Qv) * 100), 0)} ya da ${Math.ceil((Vreq * 3600) / P.fanQ)} egzoz fanı.`
+          : `<b>Güneş yükü:</b> ${n1(Qsol / 1000)} kW; örtü kaybı bunu karşılıyor, havalandırma gerekmez.`);
+      } else S.push(`<b>Güneş yükü:</b> ${n1(Qsol / 1000)} kW. Dış hava (${n1(To)} °C) hedeften sıcak; havalandırma iç sıcaklığı hedefe indiremez, gölgeleme veya serinletme gerekir.`);
+      const off = predict(0, false, false);
+      S.push(`<b>Isıtma ve güneş yokken:</b> içerisi 1 saatte <b>${n1(Tin - off.T1)} °C</b> soğur (${n1(Tin)} → ${n1(off.T1)} °C).`);
+      const AHt = absHum(Tin, Hs);
+      S.push(AHt > AHo + 0.2
+        ? `<b>Nem:</b> Bitkiler saatte ${n1(Eb * 3600)} kg su buharı veriyor. Nemi %${Hs}'te tutmak için <b>${Math.round(((Eb * 1000) / (AHt - AHo)) * 3600).toLocaleString('tr-TR')} m³/sa</b> havalandırma gerekir.`
+        : `<b>Nem:</b> Dış hava içerideki hedef nemden daha nemli (${n1(AHo)} g/m³); havalandırma nemi düşüremez, ısıtarak nem alma gerekir.`);
+      S.push(`<b>Tepki süresi:</b> Kapalı serada sıcaklık farkı ${dur(C / UA / 60)}'de %63 kapanır; egzoz fanlarıyla bu süre ${dur(C / (UA + RHOCP * (Vl + Qf)) / 60)}'ya iner.`);
+
+      // Formüller
+      const F = [
+        ['Hacim', 'V = E·B·h<sub>d</sub> + ½·E·(h<sub>m</sub>−h<sub>d</sub>)·B', `${n1(g.V, 0)} m³ · taban ${n1(g.Af, 0)} m² · örtü ${n1(g.Ac, 0)} m²`],
+        ['Isı kayıp katsayısı', 'K = U·A<sub>ö</sub> + ρc<sub>p</sub>·V̇<sub>sızıntı</sub>', `${n1(U, 1)}·${n1(g.Ac, 0)} + 1206·${n1(Vl, 3)} = ${n1(K0, 0)} W/K`],
+        ['Isıl kapasite', 'C = ρc<sub>p</sub>·V + m·A<sub>t</sub>', `${n1(C / 1e6, 2)} MJ/K`],
+        ['Sıcaklık değişimi', 'T(t) = T<sub>∞</sub> + (T<sub>0</sub> − T<sub>∞</sub>)·e<sup>−t/τ</sup>,  τ = C/K,  T<sub>∞</sub> = T<sub>dış</sub> + (Q<sub>güneş</sub> + Q<sub>ısıtma</sub>)/K', 'K = U·A + ρc<sub>p</sub>·V̇<sub>toplam</sub>'],
+        ['Nem değişimi', 'x(t) = x<sub>∞</sub> + (x<sub>0</sub> − x<sub>∞</sub>)·e<sup>−t·V̇/V</sup>,  x<sub>∞</sub> = x<sub>dış</sub> + E/V̇', `x iç ${n1(AHin)} / dış ${n1(AHo)} g/m³ (mutlak nem)`],
+        ['Doğal havalandırma', 'V̇ = C<sub>d</sub>·A/2·√(C<sub>w</sub>·u² + 2g·h·ΔT/T)', `tavan ${Math.round(Qv * 3600).toLocaleString('tr-TR')} + pencere ${Math.round(Qw * 3600).toLocaleString('tr-TR')} m³/sa (tam açık)`],
+        ['Güneş yükü', 'Q<sub>güneş</sub> = τ·I·A<sub>t</sub>·f<sub>duyulur</sub>', `${n1(tr, 2)}·${n1(I, 0)}·${n1(g.Af, 0)}·${n1(P.sensible / 100, 2)} = ${n1(Qsol / 1000)} kW`],
+        ['Terleme', 'E = f<sub>gizli</sub>·τ·I·A<sub>t</sub>/λ + e<sub>0</sub>·A<sub>t</sub>', `${n1(Eb * 3600)} kg/sa (λ = 2,45 MJ/kg, e₀ = 15 g/m²·sa)`],
+      ].map(([t, f, s]) => `<div class="ec"><b>${t}</b><code>${f}</code><small>${s}</small></div>`).join('');
+
+      $('engSrc').innerHTML = `<b>Anlık girdiler</b> · iç ${n1(Tin)} °C %${n1(Hin, 0)} · dış (S4) ${n1(To)} °C %${n1(Ho, 0)} · güneş (GS-01) ${n1(I, 0)} W/m² · rüzgar ${n1(u)} m/s · hedef ${n1(Ts)} °C %${Hs}`;
+      // Yapı bir kez kurulur; sonra yalnızca içerikler güncellenir (açılır bölüm açık kalsın diye)
+      if (!$('fcCharts')) {
+        $('engBody').innerHTML = `
+          <div class="fchead"><h4>Gelecek tahmini</h4><span class="fseg" id="fcH"><button type="button" data-h="1">1 sa</button><button type="button" data-h="3" class="on">3 sa</button><button type="button" data-h="6">6 sa</button></span></div>
+          <p class="fcnote" id="fcNote"></p>
+          <div id="fcCharts"></div>
+          <p class="fcread" id="fcRead"></p>
+          <ul class="esum" id="fcList"></ul>
+          <h4>Kapasite ve ihtiyaç</h4>
+          <ul class="esum" id="engSum"></ul>
+          <details class="acc ef" id="engF"><summary>Formüller ve ara değerler</summary><div class="eflist" id="engFlist"></div></details>
+          <p class="engnote">Tek bölgeli basitleştirilmiş sera modeli; ön boyutlandırma ve karşılaştırma içindir. "—": 12 saat içinde ulaşılamaz. ✓: zaten hedefte.</p>`;
+        document.querySelectorAll('#fcH button').forEach((b) => b.addEventListener('click', () => {
+          document.querySelectorAll('#fcH button').forEach((x) => x.classList.toggle('on', x === b));
+          fcHours = +b.dataset.h; fcHover = null; renderForecast(true);
+        }));
+        const fcBox = $('fcCharts');
+        fcBox.addEventListener('mousemove', (e) => {
+          const svgEl = e.target.closest('svg.fchart'); if (!svgEl || !fcCache) return;
+          const rc = svgEl.getBoundingClientRect(), W = +svgEl.dataset.w, ml = +svgEl.dataset.ml, mr = +svgEl.dataset.mr;
+          const x = ((e.clientX - rc.left) / rc.width) * W, f = Math.max(0, Math.min(1, (x - ml) / (W - ml - mr)));
+          fcHover = Math.round(f * (fcCache.pts.length - 1)); renderForecast(false);
+        });
+        fcBox.addEventListener('mouseleave', () => { fcHover = null; renderForecast(false); });
+      }
+      const put = (id, html) => { const e = $(id); if (e.dataset.h !== html) { e.innerHTML = html; e.dataset.h = html; } };
+      put('engSum', S.map((x) => `<li>${x}</li>`).join(''));
+      put('engFlist', F);
+      renderForecast(false);
+    }
+
+    // ---- Girişler ----
+    $('rtsClimate').innerHTML = Object.entries(CLIMATES).map(([k, c]) => `<option value="${k}">${c.name}</option>`).join('');
+    $('rtsSeason').innerHTML = Object.entries(SEASONS).map(([k, s]) => `<option value="${k}">${s.name}</option>`).join('');
+    $('rtsWeather').innerHTML = Object.entries(WEATHER).map(([k, s]) => `<option value="${k}">${s.name}</option>`).join('');
+    $('rtsStart').innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === 6 ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('');
+    $('rtsCover').innerHTML = Object.entries(COVERS).map(([k, c]) => `<option value="${k}">${c[0]}</option>`).join('');
+    const pIn = [...document.querySelectorAll('[data-rp]')];
+    const fill = () => pIn.forEach((i) => { i.value = P[i.dataset.rp]; });
+    pIn.forEach((i) => i.addEventListener('input', () => {
+      const k = i.dataset.rp;
+      if (i.tagName === 'SELECT') P[k] = i.value;
+      else { const v = parseFloat(i.value); if (isFinite(v) && v > 0) P[k] = v; }
+      ui();
+    }));
+    $('rtsOn').addEventListener('input', (e) => setOn(e.target.checked));
+    $('rtsClimate').addEventListener('input', (e) => { st.climate = e.target.value; reset(); if (st.on) lastC = control(); ui(); });
+    $('rtsSeason').addEventListener('input', (e) => { st.season = e.target.value; reset(); if (st.on) lastC = control(); ui(); });
+    $('rtsWeather').addEventListener('input', (e) => { st.weather = e.target.value; if (st.on) log(`Hava durumu: ${WEATHER[st.weather].name}`, 'evt'); ui(); });
+    $('rtsStart').addEventListener('input', (e) => { st.start = +e.target.value; reset(); if (st.on) lastC = control(); ui(); });
+    $('rtsReset').addEventListener('click', () => { reset(); if (st.on) lastC = control(); ui(); });
+    $('rtsPause').addEventListener('click', () => { st.paused = !st.paused; $('rtsPause').textContent = st.paused ? '▶' : 'II'; ui(); });
+    $('rtsParReset').addEventListener('click', () => { Object.assign(P, PDEF); fill(); ui(); });
+    $('rtsRand').addEventListener('input', (e) => { st.rand = e.target.checked; });
+    $('rtsIrrig').addEventListener('input', (e) => { st.irrig = e.target.checked; });
+    $('evGrid').addEventListener('click', (e) => {
+      const b = e.target.closest('.evb'); if (!b || !st.on) return;
+      const k = b.dataset.e;
+      if (st.act[k]) endEvt(k, 'elle bitirildi'); else startEvt(k);
+      ui();
+    });
+    $('logAcc').addEventListener('toggle', () => { st.logDirty = true; ui(); });
+    document.querySelectorAll('#rtsSpeed button[data-s]').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('#rtsSpeed button[data-s]').forEach((x) => x.classList.toggle('on', x === b));
+      st.speed = +b.dataset.s; ui();
+    }));
+    document.querySelectorAll('.t-sim details.acc').forEach((d) => d.addEventListener('toggle', () => {
+      if (d.open) document.querySelectorAll('.t-sim details.acc').forEach((x) => { if (x !== d) x.open = false; });
+    }));
+    fill(); reset();
+    if (matchMedia('(max-width: 820px), (max-height: 560px) and (min-width: 600px)').matches) document.querySelectorAll('.t-sim details.acc').forEach((d) => { d.open = false; });
+
+    // 10 dk boyunca değeri hiç değişmeyen iç sensörler (diğerleri değişirken)
+    const stuck = () => { const ks = ['S1', 'S2', 'S3'].filter((k) => st.chg[k] && st.t - st.chg[k].t > 600); return ks.length < 3 ? ks : []; };
+    const getParams = () => ({ ...P });
+    const setParams = (o) => { for (const k in PDEF) if (o && k in o && (k === 'cover' ? o[k] in COVERS : isFinite(+o[k]) && +o[k] > 0)) P[k] = k === 'cover' ? o[k] : +o[k]; fill(); ui(); };
+    return { getParams, setParams, get on() { return st.on; }, get state() { return st; }, isAct, advance, guard: (w) => guard(w), ui, eng, stuck, log };
+  })();
+  // Sağ sütun sekmeleri
+  document.querySelectorAll('.rtabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.rtabs button').forEach((x) => x.classList.toggle('on', x === b));
+    document.querySelector('.p-rules').dataset.t = b.dataset.t;
+    if (b.dataset.t === 'eng') RTS.eng();
+  }));
+
+  // Teşhis için salt-okunur erişim (tarayıcı konsolunda: __sera)
+  window.__sera = { RTS, sens, cmd, pos, env, latches: L };
+
+  bind();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
